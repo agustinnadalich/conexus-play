@@ -77,13 +77,26 @@ def get_match_events(match_id):
                 
             game_time = seconds_to_game_time(timestamp_sec, period) if timestamp_sec is not None else "00:00"
 
+            # Extraer jugadores de extra_data (puede ser string o array)
+            players_raw = safe_extra_data.get("PLAYER") or safe_extra_data.get("PLAYERS") if isinstance(safe_extra_data, dict) else None
+            if players_raw:
+                # Normalizar a array
+                if isinstance(players_raw, str):
+                    players_list = [players_raw]
+                elif isinstance(players_raw, list):
+                    players_list = players_raw
+                else:
+                    players_list = None
+            else:
+                players_list = None
+
             event_dict = {
                 "id": event.id,
                 "event_type": event.event_type,
                 "timestamp_sec": timestamp_sec,
                 "Game_Time": game_time,
                 "game_time": game_time,
-                "players": None,  # No hay atributo players directo en el modelo Event
+                "players": players_list,  # Array normalizado de jugadores
                 "x": safe_serialize(event.x),
                 "y": safe_serialize(event.y),
                 "team": safe_extra_data.get("EQUIPO") if isinstance(safe_extra_data, dict) else None,  # Extraer de extra_data
