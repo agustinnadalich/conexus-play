@@ -56,7 +56,10 @@ export default function TacklesBarChart({ events, onBarClick }: Props) {
 
   tackleEvents.forEach((event) => {
     let players = [];
-    if (event.PLAYER) {
+    // Prioridad 1: players (array desde API base_de_datos)
+    if (event.players && Array.isArray(event.players)) {
+      players = event.players;
+    } else if (event.PLAYER) {
       players = Array.isArray(event.PLAYER) ? event.PLAYER : event.PLAYER.split(',');
     } else if (event.player_name) {
       players = Array.isArray(event.player_name) ? event.player_name : event.player_name.split(',');

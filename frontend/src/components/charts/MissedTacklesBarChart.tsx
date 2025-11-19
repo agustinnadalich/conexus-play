@@ -37,7 +37,10 @@ const MissedTacklesBarChart = ({ events, onChartClick }) => {
     const playerLabels = [
       ...new Set(missedTackleEvents.map((event) => {
         let player = null;
-        if (event.PLAYER) {
+        // Prioridad 1: players (array desde API base_de_datos)
+        if (event.players && Array.isArray(event.players) && event.players.length > 0) {
+          player = event.players[0];
+        } else if (event.PLAYER) {
           player = Array.isArray(event.PLAYER) ? event.PLAYER[0] : event.PLAYER;
         } else if (event.player_name) {
           player = Array.isArray(event.player_name) ? event.player_name[0] : event.player_name;
@@ -65,7 +68,10 @@ const MissedTacklesBarChart = ({ events, onChartClick }) => {
           data: playerLabels.map((player) => {
             const count = missedTackleEvents.filter((event) => {
               let eventPlayer = null;
-              if (event.PLAYER) {
+              // Prioridad 1: players (array desde API base_de_datos)
+              if (event.players && Array.isArray(event.players) && event.players.length > 0) {
+                eventPlayer = event.players[0];
+              } else if (event.PLAYER) {
                 eventPlayer = Array.isArray(event.PLAYER) ? event.PLAYER[0] : event.PLAYER;
               } else if (event.player_name) {
                 eventPlayer = Array.isArray(event.player_name) ? event.player_name[0] : event.player_name;
