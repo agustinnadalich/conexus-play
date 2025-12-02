@@ -7,14 +7,21 @@ const HeaderPartido = () => {
   const [puntosRival, setPuntosRival] = useState(0);
 
   useEffect(() => {
+    console.log("🏉 HeaderPartido - matchInfo recibido:", matchInfo);
     if (matchInfo?.RESULT) {
+      console.log("📊 RESULT encontrado:", matchInfo.RESULT);
       const [a, b] = matchInfo.RESULT.split("-").map(Number);
       setPuntosEquipo(a);
       setPuntosRival(b);
+    } else {
+      console.warn("⚠️ No se encontró RESULT en matchInfo");
     }
   }, [matchInfo]);
 
-  if (!matchInfo) return null;
+  if (!matchInfo) {
+    console.log("⚠️ HeaderPartido - matchInfo es null");
+    return null;
+  }
 
   const {
     TEAM,
@@ -46,9 +53,9 @@ const HeaderPartido = () => {
 
   return (
     <div className="w-full bg-slate-100 p-4 rounded-xl shadow-sm">
-      <div className="flex flex-col 2xl:flex-row 2xl:justify-between 2xl:items-center gap-4">
+      <div className="flex flex-col  gap-4">
         {/* Equipos y score */}
-        <div className="flex-1 flex justify-center items-center gap-2 2xl:gap-8 w-full">
+        <div className="flex-1 flex justify-center items-center gap-2 w-full">
           <div className="flex flex-col items-center flex-1 min-w-0">
             <img
               src={logo(TEAM)}
@@ -59,7 +66,7 @@ const HeaderPartido = () => {
             <span className="text-sm font-semibold truncate text-center w-full">{TEAM}</span>
           </div>
 
-          <div className="flex flex-col items-center text-lg font-bold mx-2 2xl:mx-8 min-w-0">
+          <div className="flex flex-col items-center text-lg font-bold mx-2  min-w-0">
             <span>{puntosEquipo} - {puntosRival}</span>
           </div>
 

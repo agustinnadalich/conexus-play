@@ -1,137 +1,155 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Doughnut } from 'react-chartjs-2';
-import ChartDataLabels from 'chartjs-plugin-datalabels';
 
-const PenaltiesCausePieChart = ({ events, onChartClick }) => {
-  const causes = [...new Set(events.map(event => event.INFRACTION_TYPE))];  
-  
-  const teamPenaltiesByCause = causes.map(cause => events.filter(event => event.INFRACTION_TYPE === cause && event.TEAM !== 'OPPONENT').length);
-  const rivalPenaltiesByCause = causes.map(cause => events.filter(event => event.INFRACTION_TYPE === cause && event.TEAM === 'OPPONENT').length);
+const PenaltiesCausePieChart = ({ events, onChartClick }: any) => {
+  const [chartData, setChartData] = useState<any>(null);
 
-  // Filtrar causas con al menos un evento
-  const filteredCauses = causes.filter((_, index) => teamPenaltiesByCause[index] > 0 || rivalPenaltiesByCause[index] > 0);
-  const filteredTeamPenaltiesByCause = teamPenaltiesByCause.filter((count, index) => count > 0 || rivalPenaltiesByCause[index] > 0);
-  const filteredRivalPenaltiesByCause = rivalPenaltiesByCause.filter((count, index) => count > 0 || teamPenaltiesByCause[index] > 0);
+  useEffect(() => {
+    const getCause = (event: any) => {
+      const cause = event.extra_data?.INFRACCION || 
+                    event.INFRACCION || 
+                    event.extra_data?.INFRACTION_TYPE || 
+                    event.INFRACTION_TYPE || 
+                    'SIN ESPECIFICAR';
+      return String(cause).toUpperCase();
+    };
 
-  const totalTeamPenalties = filteredTeamPenaltiesByCause.reduce((a, b) => a + b, 0);
-  const totalRivalPenalties = filteredRivalPenaltiesByCause.reduce((a, b) => a + b, 0);
+    const isOpponent = (event: any) => {
+      const equipo = event.extra_data?.EQUIPO || '';
+      if (String(equipo).toUpperCase() === 'RIVAL') return true;
+      
+      const team = event.team || event.TEAM || '';
+      const teamStr = String(team).toUpperCase().trim();
+      
+      if (event.IS_OPPONENT === true || event.extra_data?.IS_OPPONENT === true) return true;
+      if (teamStr === 'OPPONENT' || teamStr === 'RIVAL' || teamStr === 'AWAY' || teamStr === 'VISITANTE') return true;
+      if (teamStr.includes('OPPONENT') || teamStr.includes('RIVAL') || teamStr.includes('AWAY')) return true;
+      
+      return false;
+    };
 
-  // Crear datos y colores combinados asegurando que los datos y colores estén alineados correctamente
-  const combinedData = [
-    ...filteredTeamPenaltiesByCause.map((count, index) => count > 0 ? count : null).filter(count => count !== null),
-    ...filteredRivalPenaltiesByCause.map((count, index) => count > 0 ? count : null).filter(count => count !== null)
-  ];
-  const combinedColors = [
-    ...filteredTeamPenaltiesByCause.map((count, index) => count > 0 ? `rgba(255, ${100 + index * 30}, ${100 + index * 30}, 0.8)` : null).filter(color => color !== null),
-    ...filteredRivalPenaltiesByCause.map((count, index) => count > 0 ? `rgba(${30 + index * 30}, ${144 + index * 10}, 255, 0.8)` : null).filter(color => color !== null)
-  ];
+    const penaltyEvents = events.filter(event => event.CATEGORY === 'PENALTY' || event.event_type === 'PENALTY');
+    const allCauses = [...new Set(penaltyEvents.map(getCause))];
 
-  const data = {
-    labels: [
-      ...filteredCauses.map((cause, index) => filteredTeamPenaltiesByCause[index] > 0 ? cause + ' (Our Team)' : null).filter(label => label !== null),
-      ...filteredCauses.map((cause, index) => filteredRivalPenaltiesByCause[index] > 0 ? cause + ' (Opponent)' : null).filter(label => label !== null)
-    ],
-    datasets: [
-      {
-        data: combinedData,
-        backgroundColor: combinedColors,
-        hoverBackgroundColor: combinedColors,
-      },
-    ],
+    const teamLabels: string[] = [];
+    const teamData: number[] = [];
+    const teamColors: string[] = [];
+    const rivalLabels: string[] = [];
+    const rivalData: number[] = [];
+    const rivalColors: string[] = [];
+    let totalTeam = 0;
+    let totalRival = 0;
+
+    allCauses.forEach((cause, index) => {
+      const teamCount = penaltyEvents.filter(event => !isOpponent(event) && getCause(event) === cause).length;
+      const rivalCount = penaltyEvents.filter(event => isOpponent(event) && getCause(event) === cause).length;
+
+      if (teamCount > 0) {
+        teamLabels.push(`${cause} (Equipo)`);
+        teamData.push(teamCount);
+        teamColors.push(`rgba(255, ${100 + index * 30}, ${100 + index * 30}, 0.8)`);
+        totalTeam += teamCount;
+      }
+      if (rivalCount > 0) {
+        rivalLabels.push(`${cause} (Rival)`);
+        rivalData.push(rivalCount);
+        rivalColors.push(`rgba(${30 + index * 20}, ${144 + index * 6}, 255, 0.8)`);
+        totalRival += rivalCount;
+      }
+    });
+
+    const data = {
+      labels: [...teamLabels, ...rivalLabels],
+      datasets: [{
+        data: [...teamData, ...rivalData],
+        backgroundColor: [...teamColors, ...rivalColors],
+        hoverBackgroundColor: [...teamColors, ...rivalColors],
+      }],
+    };
+
+    setChartData({ data, totalTeam, totalRival });
+  }, [events]);
+
+  const centerTextPlugin = {
+    id: 'centerText',
+    afterDatasetsDraw(chart: any) {
+      const { ctx, chartArea: { width, height } } = chart;
+      ctx.save();
+      const centerX = width / 2;
+      const centerY = height / 2;
+      
+      ctx.font = 'bold 16px Arial';
+      ctx.fillStyle = '#dc2626';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`Equipo: ${chartData?.totalTeam || 0}`, centerX, centerY - 12);
+      
+      ctx.fillStyle = '#1e40af';
+      ctx.fillText(`Rival: ${chartData?.totalRival || 0}`, centerX, centerY + 12);
+      
+      ctx.restore();
+    }
   };
 
-  // const handleChartClick = (event, elements) => {
-  //   if (elements.length > 0) {
-  //     const index = elements[0].index;
-  //     const causeIndex = index % filteredCauses.length;
-  //     const cause = filteredCauses[causeIndex];
-  //     const team = index < filteredCauses.length ? 'Our Team' : 'Opponent';
-  //     onChartClick(event, elements, "penalty_cause", [{ descriptor: "INFRACTION_TYPE", value: cause }]);
-  //   }
-  // };
-
   const handleChartClick = (event, elements) => {
+    if (!elements || elements.length === 0) return;
     const chart = elements[0].element.$context.chart;
-    onChartClick(event, elements, chart, "penalty_cause", "penalties-tab"); 
+    const dataIndex = elements[0].index ?? elements[0].element?.$context?.dataIndex;
+    const label = chartData?.data?.labels?.[dataIndex];
+
+    const isOpponent = (event: any) => {
+      const equipo = event.extra_data?.EQUIPO || '';
+      if (String(equipo).toUpperCase() === 'RIVAL') return true;
+      
+      const team = event.team || event.TEAM || '';
+      const teamStr = String(team).toUpperCase().trim();
+      
+      if (event.IS_OPPONENT === true || event.extra_data?.IS_OPPONENT === true) return true;
+      if (teamStr === 'OPPONENT' || teamStr === 'RIVAL' || teamStr === 'AWAY' || teamStr === 'VISITANTE') return true;
+      if (teamStr.includes('OPPONENT') || teamStr.includes('RIVAL') || teamStr.includes('AWAY')) return true;
+      
+      return false;
+    };
+
+    const getCauseForFilter = (event: any) => {
+      const cause = event.extra_data?.INFRACCION || 
+                    event.INFRACCION || 
+                    event.extra_data?.INFRACTION_TYPE || 
+                    event.INFRACTION_TYPE || 
+                    'SIN ESPECIFICAR';
+      return String(cause).toUpperCase();
+    };
+
+    const cause = label?.replace(/ \((Equipo|Rival)\)$/, '');
+    const isRival = label?.includes('(Rival)');
+    
+    const filteredEvents = events.filter((ev) => {
+      const evCause = getCauseForFilter(ev);
+      const evIsRival = isOpponent(ev);
+      const category = ev.CATEGORY || ev.event_type;
+      return category === 'PENALTY' && evCause === cause && evIsRival === isRival;
+    });
+
+    const additionalFilters = [{ descriptor: 'INFRACCION', value: cause }];
+    onChartClick(event, elements, chart, 'cause', 'penalties-tab', additionalFilters, filteredEvents);
   };
 
   const pieChartOptions = {
     responsive: true,
     maintainAspectRatio: false,
-    cutout: '50%', // Agrandar el anillo
+    cutout: '50%',
     plugins: {
-      legend: {
-        display: true,
-        position: 'top' as const,
-        onClick: (e, legendItem, legend) => {
-          const index = legendItem.index;
-          const chart = legend.chart;
-          const meta = chart.getDatasetMeta(0);
-          const start = index === 0 ? 0 : filteredTeamPenaltiesByCause.length;
-          const end = index === 0 ? filteredTeamPenaltiesByCause.length : meta.data.length;
-          for (let i = start; i < end; i++) {
-            meta.data[i].hidden = !meta.data[i].hidden;
-          }
-          chart.update();
-        },
-        labels: {
-          generateLabels: (chart) => {
-            return [
-              {
-                text: 'Our Team',
-                fillStyle: 'rgba(255, 99, 132, 1)',
-                hidden: false,
-                index: 0,
-              },
-              {
-                text: 'Opponent',
-                fillStyle: 'rgba(54, 162, 235, 1)',
-                hidden: false,
-                index: 1,
-              },
-            ];
-          },
-        },
-      },
-      title: {
-        display: true,
-        text: 'Penalties by Cause',
-      },
-      tooltip: {
-        callbacks: {
-          label: (context) => {
-            const label = context.label;
-            const value = context.raw;
-            return `${label}: ${value}`;
-          },
-        },
-      },
-      datalabels: {
-        color: 'grey',
-        formatter: (value, context) => {
-          const meta = context.chart.getDatasetMeta(context.datasetIndex);
-          const element = meta.data[context.dataIndex];
-          const hidden = element ? element.hidden : false;
-          return hidden || value === 0 ? '' : value;
-        },
-        font: {
-          weight: 700,
-        },
-      },
+      legend: { display: true, position: 'top' as const },
+      title: { display: true, text: 'Penalties por Causa (Equipo vs Rival)' },
     },
     onClick: handleChartClick,
   };
 
-  return (
-    <div style={{ position: 'relative', minHeight: '500px' }}>
-      <Doughnut data={data} options={pieChartOptions} plugins={[ChartDataLabels]} />
-      <div style={{ position: 'absolute', top: '55%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
-        <span style={{ color: 'rgba(54, 162, 235, 1)', fontSize: '1.5em' }}>{totalRivalPenalties}</span>
-        <span style={{ fontSize: '1.5em' }}> / </span>
-        <span style={{ color: 'rgba(255, 99, 132, 1)', fontSize: '1.5em' }}>{totalTeamPenalties}</span> 
-      </div>
+  return chartData?.data ? (
+    <div style={{ height: '400px' }}>
+      <Doughnut data={chartData.data} options={pieChartOptions as any} plugins={[centerTextPlugin]} />
     </div>
-  );
+  ) : null;
 };
 
 export default PenaltiesCausePieChart;

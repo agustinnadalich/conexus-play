@@ -232,25 +232,59 @@ const MatchesAdmin = () => {
     const handleSaveProfileSettings = async () => {
         if (!editingMatch) return;
 
-        // Para configuración manual, siempre guardar los tiempos en la metadata del partido
-        const matchData = {
-            ...editingMatch,
-            manual_period_times: manualTimes
-        };
+        try {
+            // Enviar los tiempos con el sufijo correcto para el backend
+            const matchData = {
+                kick_off_1_seconds: manualTimes.kick_off_1,
+                end_1_seconds: manualTimes.end_1,
+                kick_off_2_seconds: manualTimes.kick_off_2,
+                end_2_seconds: manualTimes.end_2
+            };
 
-        const res = await fetch(`http://localhost:5001/api/matches/${editingMatch.id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(matchData),
-        });
+            console.log("💾 Guardando tiempos del partido:", matchData);
 
-        if (res.ok) {
-            alert("Configuración de tiempos guardada correctamente");
-            // Actualizar el estado local para reflejar los cambios
-            setEditingMatch(matchData);
+            const res = await fetch(`http://localhost:5001/api/matches/${editingMatch.id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(matchData),
+            });
+
+            if (!res.ok) {
+                const error = await res.json();
+                throw new Error(error.error || "Error al guardar");
+            }
+
+            console.log("✅ Tiempos guardados, recalculando Game_Time...");
+
+            // Recalcular los Game_Time de todos los eventos
+            const recalcRes = await fetch(`http://localhost:5001/api/matches/${editingMatch.id}/recalculate-times`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" }
+            });
+
+            if (!recalcRes.ok) {
+                const error = await recalcRes.json();
+                throw new Error(error.error || "Error al recalcular tiempos");
+            }
+
+            const recalcData = await recalcRes.json();
+            console.log("✅ Game_Time recalculado:", recalcData);
+
+            alert(`✅ Configuración guardada y ${recalcData.events_updated} eventos actualizados correctamente`);
+            
+            // Actualizar el estado local
+            setEditingMatch({
+                ...editingMatch,
+                kick_off_1_seconds: manualTimes.kick_off_1,
+                end_1_seconds: manualTimes.end_1,
+                kick_off_2_seconds: manualTimes.kick_off_2,
+                end_2_seconds: manualTimes.end_2
+            });
+            
             fetchMatches(); // Recargar partidos
-        } else {
-            alert("Error al guardar la configuración");
+        } catch (error) {
+            console.error("❌ Error:", error);
+            alert(`Error: ${error.message}`);
         }
     };
 
@@ -586,7 +620,7 @@ const MatchesAdmin = () => {
                 <Button onClick={handleSave}>Guardar Partido</Button>
                 {timeMethod === "manual" && (
                     <Button onClick={handleSaveProfileSettings} variant="outline">
-                        Guardar Configuración de Tiempos
+                        💾 Guardar Tiempos y Recalcular Game_Time
                     </Button>
                 )}
                 <Button variant="secondary" onClick={handleCancel}>Cancelar</Button>

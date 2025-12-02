@@ -188,7 +188,7 @@ const TriesOriginChart = ({ events, onChartClick }) => {
 
     // Descriptor básico de origen: usar la clave TRY_ORIGIN para que ChartsTabs la encuentre
     const additionalFilters = [
-      { descriptor: "CATEGORY", value: "POINTS" }, 
+      { descriptor: "event_type", value: "POINTS" }, 
       { descriptor: "TRY_ORIGIN", value: label }
     ];
 

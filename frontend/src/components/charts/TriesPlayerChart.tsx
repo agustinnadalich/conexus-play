@@ -26,11 +26,20 @@ const TriesPlayerChart = ({ events, onChartClick }: any) => {
 
     // Función para obtener el jugador del evento
     const getPlayerName = (event: any) => {
+      // Prioridad 1: players (array desde API base_de_datos)
+      if (event.players && Array.isArray(event.players) && event.players.length > 0) {
+        return event.players[0]; // Tries siempre es individual
+      }
+      // Prioridad 2: PLAYER (puede ser array o string)
+      if (event.PLAYER) {
+        return Array.isArray(event.PLAYER) ? event.PLAYER[0] : event.PLAYER;
+      }
+      // Prioridad 3-5: campos legacy
       return event.player_name || 
              event.JUGADOR || 
              event.extra_data?.JUGADOR || 
              event.extra_data?.PLAYER || 
-             event.PLAYER;
+             null;
     };
 
     const playerLabels = [
@@ -72,15 +81,22 @@ const TriesPlayerChart = ({ events, onChartClick }: any) => {
     const dataIndex = el.index ?? el.element?.index ?? el.element?.$context?.dataIndex ?? el.element?.$context?.dataIndex;
     const label = triesPlayerChartData?.labels?.[dataIndex];
     
-    const getPlayerName = (event: any) => {
+    const getPlayerNameForFilter = (event: any) => {
+      // Misma lógica que getPlayerName original
+      if (event.players && Array.isArray(event.players) && event.players.length > 0) {
+        return event.players[0];
+      }
+      if (event.PLAYER) {
+        return Array.isArray(event.PLAYER) ? event.PLAYER[0] : event.PLAYER;
+      }
       return event.player_name || 
              event.JUGADOR || 
              event.extra_data?.JUGADOR || 
              event.extra_data?.PLAYER || 
-             event.PLAYER;
+             null;
     };
     
-    const filteredEvents = events.filter(ev => getPlayerName(ev) === label);
+    const filteredEvents = events.filter(ev => getPlayerNameForFilter(ev) === label);
     const additionalFilters = label ? [{ descriptor: 'JUGADOR', value: label }] : [];
     onChartClick(event, elements, chart, 'player', 'tries-tab', additionalFilters, filteredEvents);
   };

@@ -20,11 +20,27 @@ import TriesPhasesChart from "./charts/TriesPhasesChart";
 import PenaltiesPlayerBarChart from "./charts/PenaltiesPlayerBarChart";
 import PenaltiesTimeChart from "./charts/PenaltiesTimeChart";
 import PenaltiesCausePieChart from "./charts/PenaltiesCausePieChart";
-import TurnoversPlayerBarChart from "./charts/TurnoversPlayerBarChart";
-import TurnoversTypePieChart from "./charts/TurnoversTypePieChart";
+import TurnoversRecoversBarChart from "./charts/TurnoversRecoversBarChart";
+import TurnoversLostBarChart from "./charts/TurnoversLostBarChart";
+import TurnoversTypeChart from "./charts/TurnoversTypeChart";
 import TurnoversTimeChart from "./charts/TurnoversTimeChart";
 import ScrumEffectivityChart from "./charts/ScrumEffectivityChart";
 import LineoutEffectivityChart from "./charts/LineoutEffectivityChart";
+import ScrumTeamChart from "./charts/ScrumTeamChart";
+import ScrumRivalChart from "./charts/ScrumRivalChart";
+import LineoutTeamChart from "./charts/LineoutTeamChart";
+import LineoutRivalChart from "./charts/LineoutRivalChart";
+import GoalKicksEffectivityTeamChart from "./charts/GoalKicksEffectivityTeamChart";
+import GoalKicksEffectivityOpponentChart from "./charts/GoalKicksEffectivityOpponentChart";
+import GoalKicksPlayerChart from "./charts/GoalKicksPlayerChart";
+import GoalKicksTimeChart from "./charts/GoalKicksTimeChart";
+import LineBreaksPlayerChart from "./charts/LineBreaksPlayerChart";
+import LineBreaksTypeTeamChart from "./charts/LineBreaksTypeTeamChart";
+import LineBreaksTypeOpponentChart from "./charts/LineBreaksTypeOpponentChart";
+import LineBreaksChannelTeamChart from "./charts/LineBreaksChannelTeamChart";
+import LineBreaksChannelOpponentChart from "./charts/LineBreaksChannelOpponentChart";
+import LineBreaksTimeChart from "./charts/LineBreaksTimeChart";
+import LineBreaksResultChart from "./charts/LineBreaksResultChart";
 // import TimelineChart from "./charts/TimelineChart";
 // import ScatterChart from "./charts/ScatterChart";
 // Aquí luego podrás importar los otros charts
@@ -232,6 +248,8 @@ const ChartsTabs = (_props: any) => {
   const hasPenalties = (filteredEvents || []).some((event) => event.CATEGORY === "PENALTY" || event.event_type === "PENALTY");
   const hasTurnovers = (filteredEvents || []).some((event) => event.CATEGORY === "TURNOVER+" || event.CATEGORY === "TURNOVER-" || event.event_type === "TURNOVER+" || event.event_type === "TURNOVER-");
   const hasSetPieces = (filteredEvents || []).some((event) => event.CATEGORY === "SCRUM" || event.CATEGORY === "LINEOUT" || event.event_type === "SCRUM" || event.event_type === "LINEOUT");
+  const hasGoalKicks = (filteredEvents || []).some((event) => event.CATEGORY === "GOAL-KICK" || event.event_type === "GOAL-KICK");
+  const hasLineBreaks = (filteredEvents || []).some((event) => event.CATEGORY === "BREAK" || event.event_type === "BREAK");
 
   // Función para manejar clicks en gráficos y agregar filtros
   const handleChartClick = (...args: any[]) => {
@@ -466,16 +484,32 @@ const ChartsTabs = (_props: any) => {
 
           const expectedValue = normalizeGroupLabel(mapAliasToGroup(value));
 
-          const timeInSeconds = Number(event.timestamp_sec ?? event.Game_Time ?? event.time ?? event.seconds ?? 0) || 0;
+          // IMPORTANTE: Usar Game_Time de extra_data (valor recalculado correcto) en lugar de timestamp_sec (video time)
+          // Game_Time es el tiempo de juego (00:00 a 80:00), timestamp_sec es el segundo del video
+          let timeInSeconds = 0;
+          
+          // Primero intentar obtener Game_Time de extra_data (formato "MM:SS")
+          const gameTimeStr = event.extra_data?.Game_Time;
+          if (gameTimeStr && typeof gameTimeStr === 'string') {
+            const [mins, secs] = gameTimeStr.split(':').map(Number);
+            if (!isNaN(mins) && !isNaN(secs)) {
+              timeInSeconds = mins * 60 + secs;
+            }
+          }
+          
+          // Fallback: si no hay Game_Time calculado, usar otros campos
+          if (timeInSeconds === 0) {
+            timeInSeconds = Number(event.Game_Time ?? event.time ?? event.seconds ?? event.timestamp_sec ?? 0) || 0;
+          }
+          
           let eventQuarterGroup: string;
-
           if (timeInSeconds < 1200) eventQuarterGroup = "0'- 20'";      // 0-20 minutos
           else if (timeInSeconds < 2400) eventQuarterGroup = "20' - 40'";    // 20-40 minutos
           else if (timeInSeconds < 3600) eventQuarterGroup = "40' - 60'";    // 40-60 minutos
           else eventQuarterGroup = "60' - 80'";                        // 60+ minutos
 
           const calculated = normalizeGroupLabel(eventQuarterGroup);
-          console.log("🔍 Checking event", event.id, "for Time_Group =", value, "-> time:", timeInSeconds, "-> calculated:", eventQuarterGroup, "(norm->", calculated, ") expected->", expectedValue);
+          console.log("🔍 Checking event", event.id, "for Time_Group =", value, "-> gameTimeStr:", gameTimeStr, "-> timeInSeconds:", timeInSeconds, "-> calculated:", eventQuarterGroup, "(norm->", calculated, ") expected->", expectedValue);
           return calculated === expectedValue;
         }
         
@@ -488,18 +522,18 @@ const ChartsTabs = (_props: any) => {
         }
         
         // Filtrado especial para equipos (soporta categorías agregadas)
-        if (descriptor === 'TEAM') {
+        if (descriptor === 'TEAM' || descriptor === 'EQUIPO') {
           const eventTeam = getTeamFromEvent(event);
           
           // Normalizar el valor del filtro para aceptar diferentes variaciones
           const normalizedValue = value.toUpperCase().trim();
           
-          if (normalizedValue === 'OUR_TEAM' || normalizedValue === 'OUR_TEAMS') {
+          if (normalizedValue === 'OUR_TEAM' || normalizedValue === 'OUR_TEAMS' || normalizedValue === 'NUESTRO EQUIPO' || normalizedValue === 'NUESTROS EQUIPOS') {
             // Filtrar eventos de nuestros equipos
             const matches = isOurTeam(eventTeam || '', ourTeamsList);
             console.log("🔍 TEAM=OUR_TEAM/OUR_TEAMS check:", eventTeam, "in", ourTeamsList, "->", matches);
             return matches;
-          } else if (normalizedValue === 'OPPONENTS' || normalizedValue === 'RIVAL' || normalizedValue === 'RIVALES') {
+          } else if (normalizedValue === 'OPPONENTS' || normalizedValue === 'RIVAL' || normalizedValue === 'RIVALES' || normalizedValue === 'OPPONENT') {
             // Filtrar eventos de rivales
             const matches = !isOurTeam(eventTeam || '', ourTeamsList);
             console.log("🔍 TEAM=OPPONENTS/RIVAL/RIVALES check:", eventTeam, "not in", ourTeamsList, "->", matches);
@@ -562,21 +596,71 @@ const ChartsTabs = (_props: any) => {
           console.log("🔍 TRY_PHASES check:", n, "target->", value, "->", matches);
           return matches;
         }
-        
-        // Filtrado general por otros campos
-        // Buscar en event[field] o event.extra_data[field] con varias normalizaciones
-        const lookupKeys = [
-          descriptor,
-          descriptor.toString().toUpperCase(),
-          descriptor.toString().toLowerCase(),
-          descriptor.toString().replace(/[- ]/g, '_'),
-          descriptor.toString().replace(/[- ]/g, ''),
-        ];
 
+        // Filtrado especial para tipo de turnover (TURNOVER_TYPE)
+        if (descriptor === 'TURNOVER_TYPE' || descriptor === 'TIPO_TURNOVER') {
+          const eventTurnoverType = 
+            event.extra_data?.TURNOVER_TYPE ||
+            event.TURNOVER_TYPE ||
+            event.extra_data?.['TIPO-PERDIDA/RECUPERACIÓN'] ||
+            event['TIPO-PERDIDA/RECUPERACIÓN'] ||
+            null;
+          
+          const matches = eventTurnoverType === value;
+          console.log("🔍 TURNOVER_TYPE check:", eventTurnoverType, "===", value, "->", matches);
+          return matches;
+        }
+
+        // Filtrado especial para resultado de patadas (RESULTADO_PALOS)
+        if (descriptor === 'RESULTADO_PALOS' || descriptor === 'RESULTADO-PALOS') {
+          const eventResult = 
+            event.extra_data?.RESULTADO_PALOS ||
+            event.RESULTADO_PALOS ||
+            event.extra_data?.['RESULTADO-PALOS'] ||
+            event['RESULTADO-PALOS'] ||
+            null;
+          
+          const matches = String(eventResult).toUpperCase() === String(value).toUpperCase();
+          console.log("🔍 RESULTADO_PALOS check:", eventResult, "===", value, "->", matches);
+          return matches;
+        }
+        
+        // Filtrado especial para JUGADOR - buscar en event.players (array desde PostgreSQL)
         let eventValue: any = undefined;
-        for (const key of lookupKeys) {
-          if (event.hasOwnProperty(key) && event[key] !== undefined) { eventValue = event[key]; break; }
-          if (event.extra_data && Object.prototype.hasOwnProperty.call(event.extra_data, key) && event.extra_data[key] !== undefined) { eventValue = event.extra_data[key]; break; }
+        
+        if (descriptor === 'JUGADOR' || descriptor === 'PLAYER') {
+          // Prioridad 1: event.players (base_de_datos branch - PostgreSQL)
+          if (event.players && Array.isArray(event.players)) {
+            eventValue = event.players; // Ya es array
+          }
+          // Prioridad 2: event.PLAYER (main branch - JSON files)
+          else if (event.PLAYER) {
+            eventValue = Array.isArray(event.PLAYER) ? event.PLAYER : [event.PLAYER];
+          }
+          // Prioridad 3: event.extra_data.JUGADOR (legacy)
+          else if (event.extra_data?.JUGADOR) {
+            const jugador = event.extra_data.JUGADOR;
+            eventValue = Array.isArray(jugador) ? jugador : [jugador];
+          }
+          // Si no hay valor, dejar undefined para que falle el match
+          else {
+            eventValue = undefined;
+          }
+        } else {
+          // Filtrado general por otros campos
+          // Buscar en event[field] o event.extra_data[field] con varias normalizaciones
+          const lookupKeys = [
+            descriptor,
+            descriptor.toString().toUpperCase(),
+            descriptor.toString().toLowerCase(),
+            descriptor.toString().replace(/[- ]/g, '_'),
+            descriptor.toString().replace(/[- ]/g, ''),
+          ];
+
+          for (const key of lookupKeys) {
+            if (event.hasOwnProperty(key) && event[key] !== undefined) { eventValue = event[key]; break; }
+            if (event.extra_data && Object.prototype.hasOwnProperty.call(event.extra_data, key) && event.extra_data[key] !== undefined) { eventValue = event.extra_data[key]; break; }
+          }
         }
 
         // Si eventValue es un array, comprobar si incluye el valor
@@ -628,6 +712,8 @@ const ChartsTabs = (_props: any) => {
           <TabsTrigger style={{ display: 'inline-flex', flex: '0 0 auto', minWidth: 110 }} value="penalties" disabled={!hasPenalties}>Penalties</TabsTrigger>
           <TabsTrigger style={{ display: 'inline-flex', flex: '0 0 auto', minWidth: 110 }} value="turnovers" disabled={!hasTurnovers}>Turnovers</TabsTrigger>
           <TabsTrigger style={{ display: 'inline-flex', flex: '0 0 auto', minWidth: 110 }} value="setpieces" disabled={!hasSetPieces}>Set Pieces</TabsTrigger>
+          <TabsTrigger style={{ display: 'inline-flex', flex: '0 0 auto', minWidth: 110 }} value="goalkicks" disabled={!hasGoalKicks}>Palos</TabsTrigger>
+          <TabsTrigger style={{ display: 'inline-flex', flex: '0 0 auto', minWidth: 110 }} value="linebreaks" disabled={!hasLineBreaks}>Quiebres</TabsTrigger>
           <TabsTrigger style={{ display: 'inline-flex', flex: '0 0 auto', minWidth: 110 }} value="advances">Avances</TabsTrigger>
           <TabsTrigger style={{ display: 'inline-flex', flex: '0 0 auto', minWidth: 110 }} value="scatter">Mapa</TabsTrigger>
           {/* Agrega más pestañas según los charts */}
@@ -880,8 +966,9 @@ const ChartsTabs = (_props: any) => {
           <h3 className="text-lg font-semibold">Turnovers</h3>
           {hasTurnovers ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <TurnoversPlayerBarChart events={filteredEvents.filter(e => e.CATEGORY === 'TURNOVER+' || e.CATEGORY === 'TURNOVER-' || e.event_type === 'TURNOVER+' || e.event_type === 'TURNOVER-')} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
-              <TurnoversTypePieChart events={filteredEvents.filter(e => e.CATEGORY === 'TURNOVER+' || e.CATEGORY === 'TURNOVER-' || e.event_type === 'TURNOVER+' || e.event_type === 'TURNOVER-')} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
+              <TurnoversRecoversBarChart events={filteredEvents.filter(e => e.CATEGORY === 'TURNOVER+' || e.CATEGORY === 'TURNOVER-' || e.event_type === 'TURNOVER+' || e.event_type === 'TURNOVER-')} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
+              <TurnoversLostBarChart events={filteredEvents.filter(e => e.CATEGORY === 'TURNOVER+' || e.CATEGORY === 'TURNOVER-' || e.event_type === 'TURNOVER+' || e.event_type === 'TURNOVER-')} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
+              <TurnoversTypeChart events={filteredEvents.filter(e => e.CATEGORY === 'TURNOVER+' || e.CATEGORY === 'TURNOVER-' || e.event_type === 'TURNOVER+' || e.event_type === 'TURNOVER-')} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
               <TurnoversTimeChart events={filteredEvents.filter(e => e.CATEGORY === 'TURNOVER+' || e.CATEGORY === 'TURNOVER-' || e.event_type === 'TURNOVER+' || e.event_type === 'TURNOVER-')} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
             </div>
           ) : (
@@ -894,12 +981,24 @@ const ChartsTabs = (_props: any) => {
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Set Pieces</h3>
           {hasSetPieces ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-8">
               {filteredEvents.some(e => e.CATEGORY === 'SCRUM' || e.event_type === 'SCRUM') && (
-                <ScrumEffectivityChart title="Scrum Effectivity" events={filteredEvents.filter(e => e.CATEGORY === 'SCRUM' || e.event_type === 'SCRUM')} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
+                <div>
+                  <h4 className="text-md font-medium mb-4">Scrums</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <ScrumTeamChart events={filteredEvents.filter(e => e.CATEGORY === 'SCRUM' || e.event_type === 'SCRUM')} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
+                    <ScrumRivalChart events={filteredEvents.filter(e => e.CATEGORY === 'SCRUM' || e.event_type === 'SCRUM')} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
+                  </div>
+                </div>
               )}
               {filteredEvents.some(e => e.CATEGORY === 'LINEOUT' || e.event_type === 'LINEOUT') && (
-                <LineoutEffectivityChart title="Lineout Effectivity" events={filteredEvents.filter(e => e.CATEGORY === 'LINEOUT' || e.event_type === 'LINEOUT')} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
+                <div>
+                  <h4 className="text-md font-medium mb-4">Lineouts</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <LineoutTeamChart events={filteredEvents.filter(e => e.CATEGORY === 'LINEOUT' || e.event_type === 'LINEOUT')} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
+                    <LineoutRivalChart events={filteredEvents.filter(e => e.CATEGORY === 'LINEOUT' || e.event_type === 'LINEOUT')} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
+                  </div>
+                </div>
               )}
             </div>
           ) : (
@@ -908,6 +1007,93 @@ const ChartsTabs = (_props: any) => {
         </div>
       </TabsContent>
 
+      <TabsContent value="goalkicks">
+        <div className="space-y-4">
+          {hasGoalKicks ? (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Patadas a los Palos</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <GoalKicksEffectivityTeamChart 
+                  events={filteredEvents.filter(e => e.CATEGORY === 'GOAL-KICK' || e.event_type === 'GOAL-KICK')} 
+                  onChartClick={(...args:any)=>{handleChartClick(...args);}}
+                  matchInfo={matchInfo}
+                />
+                <GoalKicksEffectivityOpponentChart 
+                  events={filteredEvents.filter(e => e.CATEGORY === 'GOAL-KICK' || e.event_type === 'GOAL-KICK')} 
+                  onChartClick={(...args:any)=>{handleChartClick(...args);}}
+                  matchInfo={matchInfo}
+                />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <GoalKicksPlayerChart 
+                  events={filteredEvents.filter(e => e.CATEGORY === 'GOAL-KICK' || e.event_type === 'GOAL-KICK')} 
+                  onChartClick={(...args:any)=>{handleChartClick(...args);}}
+                  matchInfo={matchInfo}
+                />
+                <GoalKicksTimeChart 
+                  events={filteredEvents.filter(e => e.CATEGORY === 'GOAL-KICK' || e.event_type === 'GOAL-KICK')} 
+                  onChartClick={(...args:any)=>{handleChartClick(...args);}}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">No hay datos de Patadas a los Palos para mostrar</div>
+          )}
+        </div>
+      </TabsContent>
+
+      <TabsContent value="linebreaks">
+        <div className="space-y-4">
+          {hasLineBreaks ? (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Quiebres de Línea</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <LineBreaksPlayerChart 
+                  events={filteredEvents.filter(e => e.CATEGORY === 'BREAK' || e.event_type === 'BREAK')} 
+                  onChartClick={(...args:any)=>{handleChartClick(...args);}}
+                  matchInfo={matchInfo}
+                />
+                <LineBreaksTimeChart 
+                  events={filteredEvents.filter(e => e.CATEGORY === 'BREAK' || e.event_type === 'BREAK')} 
+                  onChartClick={(...args:any)=>{handleChartClick(...args);}}
+                />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <LineBreaksTypeTeamChart 
+                  events={filteredEvents.filter(e => e.CATEGORY === 'BREAK' || e.event_type === 'BREAK')} 
+                  onChartClick={(...args:any)=>{handleChartClick(...args);}}
+                  matchInfo={matchInfo}
+                />
+                <LineBreaksTypeOpponentChart 
+                  events={filteredEvents.filter(e => e.CATEGORY === 'BREAK' || e.event_type === 'BREAK')} 
+                  onChartClick={(...args:any)=>{handleChartClick(...args);}}
+                  matchInfo={matchInfo}
+                />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <LineBreaksChannelTeamChart 
+                  events={filteredEvents.filter(e => e.CATEGORY === 'BREAK' || e.event_type === 'BREAK')} 
+                  onChartClick={(...args:any)=>{handleChartClick(...args);}}
+                  matchInfo={matchInfo}
+                />
+                <LineBreaksChannelOpponentChart 
+                  events={filteredEvents.filter(e => e.CATEGORY === 'BREAK' || e.event_type === 'BREAK')} 
+                  onChartClick={(...args:any)=>{handleChartClick(...args);}}
+                  matchInfo={matchInfo}
+                />
+              </div>
+              <div className="grid grid-cols-1">
+                <LineBreaksResultChart 
+                  events={filteredEvents.filter(e => e.CATEGORY === 'BREAK' || e.event_type === 'BREAK')} 
+                  onChartClick={(...args:any)=>{handleChartClick(...args);}}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">No hay datos de Quiebres para mostrar</div>
+          )}
+        </div>
+      </TabsContent>
 
       <TabsContent value="scatter">
         {/* <ScatterChart

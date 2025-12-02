@@ -1,66 +1,85 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Bar } from 'react-chartjs-2';
 
-const PenaltiesPlayerBarChart = ({ events, onChartClick }) => {
-  const players = [...new Set(events.map(event => event.PLAYER).filter(player => player !== null))];
-  const penaltiesByPlayer = players.map(player => events.filter(event => event.PLAYER === player).length);
+const PenaltiesPlayerBarChart = ({ events, onChartClick }: any) => {
+  const [chartData, setChartData] = useState(null);
 
-  const data = {
-    labels: players,
-    datasets: [
-      {
-        label: 'Penalties by Player',
-        data: penaltiesByPlayer,
-        backgroundColor: 'rgba(75,192,192,0.4)',
-        borderColor: 'rgba(75,192,192,1)',
-        borderWidth: 1,
-      },
-    ],
-  };
+  useEffect(() => {
+    const getPlayerName = (event: any) => {
+      if (event.players && Array.isArray(event.players) && event.players.length > 0) {
+        return event.players[0];
+      }
+      if (event.PLAYER) {
+        return Array.isArray(event.PLAYER) ? event.PLAYER[0] : event.PLAYER;
+      }
+      return event.player_name || event.JUGADOR || event.extra_data?.JUGADOR || event.extra_data?.PLAYER || null;
+    };
+
+    const penaltyEvents = events.filter(event => event.CATEGORY === 'PENALTY' || event.event_type === 'PENALTY');
+    const playerLabels = [...new Set(penaltyEvents.map(getPlayerName).filter(p => p !== null))].sort();
+
+    const data = {
+      labels: playerLabels,
+      datasets: [{
+        label: 'Penalties',
+        data: playerLabels.map(player => 
+          penaltyEvents.filter(event => getPlayerName(event) === player).length
+        ),
+        backgroundColor: 'rgba(255, 99, 132, 0.6)',
+      }],
+    };
+
+    setChartData(data);
+  }, [events]);
 
   const handleChartClick = (event, elements) => {
+    if (!elements || elements.length === 0) return;
     const chart = elements[0].element.$context.chart;
-    onChartClick(event, elements, chart, "player", "penalties-tab"); 
+    const dataIndex = elements[0].index ?? elements[0].element?.$context?.dataIndex;
+    const label = chartData?.labels?.[dataIndex];
+
+    const getPlayerNameForFilter = (event: any) => {
+      if (event.players && Array.isArray(event.players) && event.players.length > 0) {
+        return event.players[0];
+      }
+      if (event.PLAYER) {
+        return Array.isArray(event.PLAYER) ? event.PLAYER[0] : event.PLAYER;
+      }
+      return event.player_name || event.JUGADOR || event.extra_data?.JUGADOR || event.extra_data?.PLAYER || null;
+    };
+
+    const filteredEvents = events.filter(ev => {
+      const playerName = getPlayerNameForFilter(ev);
+      const category = ev.CATEGORY || ev.event_type;
+      return playerName === label && category === 'PENALTY';
+    });
+
+    const additionalFilters = [{ descriptor: 'JUGADOR', value: label }];
+    onChartClick(event, elements, chart, 'player', 'penalties-tab', additionalFilters, filteredEvents);
   };
 
-  const barChartOptions = {
+  const horizontal = (chartData?.labels?.length || 0) > 8;
+
+  const chartOptions = {
+    indexAxis: horizontal ? 'y' as const : 'x' as const,
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
-      legend: {
-        position: 'top',
-      },
-      title: {
-        display: true,
-        text: 'Penalties by Player',
-      },
-      tooltip: {
-        callbacks: {
-          label: (context) => {
-            const label = context.dataset.label;
-            const value = context.raw;
-            return `${label}: ${value}`;
-          },
-        },
-      },
-      datalabels: {
-        display: true,
-      },
+      legend: { position: 'top' as const },
+      title: { display: true, text: 'Penalties por Jugador' },
     },
     scales: {
-      x: {
-        stacked: true,
-      },
-      y: {
-        stacked: true,
-      },
+      x: horizontal ? { beginAtZero: true } : {},
+      y: horizontal ? {} : { beginAtZero: true },
     },
-    maintainAspectRatio: false,
     onClick: handleChartClick,
   };
 
-  return <Bar data={data} options={barChartOptions as any} />;
+  return chartData ? (
+    <div style={{ height: '400px' }}>
+      <Bar data={chartData} options={chartOptions as any} />
+    </div>
+  ) : null;
 };
 
 export default PenaltiesPlayerBarChart;
-
-

@@ -3,11 +3,40 @@ import { useFilterContext } from "@/context/FilterContext"; // Importar FilterCo
 import type { ReactNode } from "react";
 import type { MatchEvent } from "@/types";
 
+// Normaliza el segundo de inicio de un evento usando los campos disponibles
+export const resolveEventStart = (ev: MatchEvent | null | undefined): number => {
+  if (!ev) return 0;
+  const extra = ev.extra_data || {};
+  const candidates = [
+    extra.clip_start,
+    extra.clipStart,
+    extra.clipBegin,
+    extra.start,
+    extra.Start,
+    extra.Original_start,
+    extra.original_start,
+    extra.original_start_seconds,
+    ev.timestamp_sec,
+    ev.SECOND,
+  ];
+
+  for (const c of candidates) {
+    if (c === undefined || c === null) continue;
+    const num = Number(c);
+    if (!Number.isNaN(num) && Number.isFinite(num)) {
+      return num;
+    }
+  }
+
+  return 0;
+};
+
 interface PlaybackContextType {
   currentTime: number;
   setCurrentTime: (time: number) => void;
   selectedEvent: MatchEvent | null;
   setSelectedEvent: (event: MatchEvent | null) => void;
+  playRequestToken: number;
   currentIndex: number;
   setCurrentIndex: (index: number) => void;
   isPlaying: boolean;
@@ -24,23 +53,28 @@ export const PlaybackProvider = ({ children }: { children: ReactNode }) => {
   const { filteredEvents } = useFilterContext(); // Usar filteredEvents desde FilterContext
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [selectedEvent, setSelectedEvent] = useState<MatchEvent | null>(null);
+  const [playRequestToken, setPlayRequestToken] = useState<number>(0);
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
 
   const playFiltered = useCallback(() => {
     if (filteredEvents.length === 0) return;
+    const start = resolveEventStart(filteredEvents[0]);
     setSelectedEvent(filteredEvents[0]);
     setCurrentIndex(0);
-    setCurrentTime(filteredEvents[0]?.timestamp_sec ?? 0);
+    setCurrentTime(start);
     setIsPlaying(true);
+    setPlayRequestToken((t) => t + 1);
   }, [filteredEvents]);
 
   const playNext = useCallback(() => {
     if (currentIndex + 1 < filteredEvents.length) {
       const nextIndex = currentIndex + 1;
+      const start = resolveEventStart(filteredEvents[nextIndex]);
       setSelectedEvent(filteredEvents[nextIndex]);
       setCurrentIndex(nextIndex);
-      setCurrentTime(filteredEvents[nextIndex]?.timestamp_sec ?? 0);
+      setCurrentTime(start);
+      setPlayRequestToken((t) => t + 1);
     } else {
       setIsPlaying(false);
     }
@@ -49,9 +83,11 @@ export const PlaybackProvider = ({ children }: { children: ReactNode }) => {
   const playPrev = useCallback(() => {
     if (currentIndex > 0) {
       const prevIndex = currentIndex - 1;
+      const start = resolveEventStart(filteredEvents[prevIndex]);
       setSelectedEvent(filteredEvents[prevIndex]);
       setCurrentIndex(prevIndex);
-      setCurrentTime(filteredEvents[prevIndex]?.timestamp_sec ?? 0);
+      setCurrentTime(start);
+      setPlayRequestToken((t) => t + 1);
     }
   }, [currentIndex, filteredEvents]);
 
@@ -68,14 +104,16 @@ export const PlaybackProvider = ({ children }: { children: ReactNode }) => {
     console.log("Índice del evento en filteredEvents:", index);
 
     if (index !== -1) {
+      const start = resolveEventStart(event);
       setSelectedEvent(event);
       setCurrentIndex(index);
-      setCurrentTime(event.timestamp_sec ?? 0);
+      setCurrentTime(start);
       setIsPlaying(true);
+      setPlayRequestToken((t) => t + 1);
       console.log("Estados actualizados: ", {
         selectedEvent: event,
         currentIndex: index,
-        currentTime: event.timestamp_sec ?? 0,
+        currentTime: start,
         isPlaying: true,
       });
       return;
@@ -87,20 +125,25 @@ export const PlaybackProvider = ({ children }: { children: ReactNode }) => {
     );
 
     if (fallbackIndex !== -1) {
-      setSelectedEvent(filteredEvents[fallbackIndex]);
+      const matched = filteredEvents[fallbackIndex];
+      const start = resolveEventStart(matched);
+      setSelectedEvent(matched);
       setCurrentIndex(fallbackIndex);
-      setCurrentTime(filteredEvents[fallbackIndex]?.timestamp_sec ?? 0);
+      setCurrentTime(start);
       setIsPlaying(true);
+      setPlayRequestToken((t) => t + 1);
       console.log("Fallback match por timestamp/event_type gevonden:", fallbackIndex);
       return;
     }
 
     // Último recurso: aunque no esté en filteredEvents, seleccionar y saltar al tiempo del evento
     console.warn("El evento no se encontró en filteredEvents. Aplicando fallback directo.");
+    const start = resolveEventStart(event);
     setSelectedEvent(event);
     setCurrentIndex(-1);
-    setCurrentTime(event.timestamp_sec ?? 0);
+    setCurrentTime(start);
     setIsPlaying(true);
+    setPlayRequestToken((t) => t + 1);
   }, [filteredEvents]);
 
   return (
@@ -109,6 +152,7 @@ export const PlaybackProvider = ({ children }: { children: ReactNode }) => {
         currentTime,
         setCurrentTime,
         selectedEvent,
+        playRequestToken,
         setSelectedEvent,
         currentIndex,
         setCurrentIndex,

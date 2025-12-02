@@ -9,8 +9,17 @@ const PlayerPointsChart = ({ events, onChartClick }) => {
 
     // Extract player identifier from multiple possible fields and normalize to string
     const rawPlayers = pointsEvents.map((event) => {
-      if (event.PLAYER !== undefined && event.PLAYER !== null) return event.PLAYER;
+      // Prioridad 1: players (array desde API base_de_datos)
+      if (event.players && Array.isArray(event.players) && event.players.length > 0) {
+        return event.players[0]; // Points siempre es individual, tomar primer jugador
+      }
+      // Prioridad 2: PLAYER (main branch)
+      if (event.PLAYER !== undefined && event.PLAYER !== null) {
+        return Array.isArray(event.PLAYER) ? event.PLAYER[0] : event.PLAYER;
+      }
+      // Prioridad 3: player_name
       if (event.player_name) return event.player_name;
+      // Prioridad 4: extra_data.JUGADOR
       if (event.extra_data?.JUGADOR) return event.extra_data.JUGADOR;
       return null;
     }).filter(p => p !== null && p !== undefined);
@@ -41,7 +50,20 @@ const PlayerPointsChart = ({ events, onChartClick }) => {
     const datasets = pointTypes.map((ptype, idx) => {
       const dataForType = playerLabels.map((playerLabel) => {
         const total = pointsEvents
-          .filter((event) => String(event.PLAYER ?? event.player_name ?? event.extra_data?.JUGADOR ?? '').trim() === playerLabel)
+          .filter((event) => {
+            // Extraer jugador con la misma lógica que rawPlayers
+            let playerName = null;
+            if (event.players && Array.isArray(event.players) && event.players.length > 0) {
+              playerName = event.players[0];
+            } else if (event.PLAYER !== undefined && event.PLAYER !== null) {
+              playerName = Array.isArray(event.PLAYER) ? event.PLAYER[0] : event.PLAYER;
+            } else if (event.player_name) {
+              playerName = event.player_name;
+            } else if (event.extra_data?.JUGADOR) {
+              playerName = event.extra_data.JUGADOR;
+            }
+            return String(playerName ?? '').trim() === playerLabel;
+          })
           .filter(ev => String(getPointType(ev) ?? '').toUpperCase() === String(ptype).toUpperCase())
           .reduce((sum, ev) => sum + getPointsValue(ev), 0);
         return total;

@@ -5,18 +5,72 @@ import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 const LineoutEffectivityChart = ({ events, title, onChartClick }) => {
-  const won = events.filter(event => event.LINE_RESULT === "CLEAN" || event.LINE_RESULT === "DIRTY").length;
-  const lost = events.filter(event => event.LINE_RESULT === "LOST L" || event.LINE_RESULT === "NOT-STRAIGHT").length;
-  const total = won + lost;
-  const effectiveness = total > 0 ? ((won / total) * 100).toFixed(1) : 0;
+  // Extraer resultado desde extra_data.RESULTADO-LINE o LINE_RESULT
+  const getResult = (event: any) => {
+    return event.extra_data?.['RESULTADO-LINE'] || event.extra_data?.LINE_RESULT || event.LINE_RESULT;
+  };
+  
+  const isOpponent = (event: any) => {
+    const team = event.team || event.TEAM || event.extra_data?.EQUIPO || '';
+    const teamStr = String(team).toUpperCase().trim();
+    
+    if (event.IS_OPPONENT === true || event.extra_data?.IS_OPPONENT === true) return true;
+    if (event.IS_OPPONENT === 'true' || event.extra_data?.IS_OPPONENT === 'true') return true;
+    if (teamStr === 'OPPONENT' || teamStr === 'RIVAL' || teamStr === 'AWAY' || teamStr === 'VISITANTE') return true;
+    if (teamStr.includes('OPPONENT') || teamStr.includes('RIVAL') || teamStr.includes('AWAY')) return true;
+    
+    return false;
+  };
+  
+  const teamWon = events.filter(event => {
+    const result = getResult(event);
+    return !isOpponent(event) && result && (
+      String(result).toUpperCase().includes('CLEAN') || 
+      String(result).toUpperCase().includes('DIRTY') ||
+      String(result).toUpperCase().includes('WIN')
+    );
+  }).length;
+  
+  const teamLost = events.filter(event => {
+    const result = getResult(event);
+    return !isOpponent(event) && result && (
+      String(result).toUpperCase().includes('LOST') || 
+      String(result).toUpperCase().includes('NOT-STRAIGHT') ||
+      String(result).toUpperCase().includes('LOSE')
+    );
+  }).length;
+  
+  const rivalWon = events.filter(event => {
+    const result = getResult(event);
+    return isOpponent(event) && result && (
+      String(result).toUpperCase().includes('CLEAN') || 
+      String(result).toUpperCase().includes('DIRTY') ||
+      String(result).toUpperCase().includes('WIN')
+    );
+  }).length;
+  
+  const rivalLost = events.filter(event => {
+    const result = getResult(event);
+    return isOpponent(event) && result && (
+      String(result).toUpperCase().includes('LOST') || 
+      String(result).toUpperCase().includes('NOT-STRAIGHT') ||
+      String(result).toUpperCase().includes('LOSE')
+    );
+  }).length;
+  
+  const totalTeam = teamWon + teamLost;
+  const totalRival = rivalWon + rivalLost;
+  const total = totalTeam + totalRival;
+  const effectivenessTeam = totalTeam > 0 ? ((teamWon / totalTeam) * 100).toFixed(1) : 0;
+  const effectivenessRival = totalRival > 0 ? ((rivalWon / totalRival) * 100).toFixed(1) : 0;
 
   const data = {
-    labels: ['Won', 'Lost'],
+    labels: ['Equipo Won', 'Equipo Lost', 'Rival Won', 'Rival Lost'],
     datasets: [
       {
-        data: [won, lost],
-        backgroundColor: ['#36A2EB', '#FF6384'],
-        hoverBackgroundColor: ['#36A2EB', '#FF6384'],
+        data: [teamWon, teamLost, rivalWon, rivalLost],
+        backgroundColor: ['rgba(30, 144, 255, 0.8)', 'rgba(30, 144, 255, 0.4)', 'rgba(255, 99, 132, 0.8)', 'rgba(255, 99, 132, 0.4)'],
+        hoverBackgroundColor: ['rgba(30, 144, 255, 1)', 'rgba(30, 144, 255, 0.6)', 'rgba(255, 99, 132, 1)', 'rgba(255, 99, 132, 0.6)'],
       },
     ],
   };
@@ -57,25 +111,23 @@ const centerTextPlugin = {
         const ctx = chart.ctx;
         ctx.restore();
 
-        // Set font size and style for the "Effectiveness" label
-        const labelFontSize = (height / 400).toFixed(2);
-        ctx.font = `${labelFontSize}em sans-serif`;
+        // Texto para Equipo
+        const labelFontSize = (height / 500).toFixed(2);
+        ctx.font = `bold ${labelFontSize}em sans-serif`;
         ctx.textBaseline = 'middle';
-        ctx.fillStyle = '#000';
+        ctx.fillStyle = '#1e40af';
 
-        const labelText = 'Effectiveness';
-        const labelX = Math.round((width - ctx.measureText(labelText).width) / 2);
-        const labelY = height / 2 - 10; // Position above the value
-        ctx.fillText(labelText, labelX, labelY);
+        const labelTextTeam = `Equipo: ${effectivenessTeam}%`;
+        const labelXTeam = Math.round((width - ctx.measureText(labelTextTeam).width) / 2);
+        const labelYTeam = height / 2 - 12;
+        ctx.fillText(labelTextTeam, labelXTeam, labelYTeam);
 
-        // Set font size and style for the value
-        const valueFontSize = (height / 300).toFixed(2);
-        ctx.font = `${valueFontSize}em sans-serif`;
-
-        const valueText = `${effectiveness}%`;
-        const valueX = Math.round((width - ctx.measureText(valueText).width) / 2);
-        const valueY = height / 2 + 15; // Position below the label
-        ctx.fillText(valueText, valueX, valueY);
+        // Texto para Rival
+        ctx.fillStyle = '#dc2626';
+        const labelTextRival = `Rival: ${effectivenessRival}%`;
+        const labelXRival = Math.round((width - ctx.measureText(labelTextRival).width) / 2);
+        const labelYRival = height / 2 + 12;
+        ctx.fillText(labelTextRival, labelXRival, labelYRival);
 
         ctx.save();
     },

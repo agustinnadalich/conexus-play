@@ -83,6 +83,32 @@ export function isOurTeam(teamName: string, ourTeamsList: string[]): boolean {
   );
 }
 
+// Normalizar descriptor de equipo para filtros
+export function normalizeTeamForFilter(team: string | undefined, matchInfo: any, ourTeamsList: string[]): string {
+  if (!team) return 'UNKNOWN';
+  
+  const normalized = normalizeString(team).toUpperCase();
+  
+  // Si es un placeholder, resolverlo al nombre real
+  if (normalized === 'OUR_TEAM' || normalized === 'OURTEAM' || normalized === 'NUESTRO EQUIPO' || normalized === 'NUESTROS EQUIPOS') {
+    return matchInfo?.team_name || matchInfo?.TEAM || matchInfo?.team || ourTeamsList[0] || 'PESCARA';
+  }
+  
+  if (normalized === 'OPPONENT' || normalized === 'RIVAL' || normalized === 'RIVALES') {
+    return matchInfo?.opponent_name || matchInfo?.OPPONENT || matchInfo?.opponent || 'RIVAL';
+  }
+  
+  if (normalized === 'DESCONOCIDO' || normalized === 'UNKNOWN' || normalized === 'N/A' || normalized === '') {
+    // Intentar determinar si es equipo propio o rival
+    if (isOurTeam(team, ourTeamsList)) {
+      return matchInfo?.team_name || matchInfo?.TEAM || matchInfo?.team || ourTeamsList[0] || 'PESCARA';
+    }
+    return matchInfo?.opponent_name || matchInfo?.OPPONENT || matchInfo?.opponent || 'RIVAL';
+  }
+  
+  return team;
+}
+
 export function computeTackleStatsAggregated(events: any[], ourTeamsList: string[]) {
   const tackleEvents = (events || []).filter((event: any) =>
     (event.event_type && (event.event_type === 'TACKLE' || event.event_type === 'MISSED-TACKLE')) ||

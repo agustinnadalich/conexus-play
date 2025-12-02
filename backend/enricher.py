@@ -637,31 +637,53 @@ def calculate_try_origin_and_phases(events):
             return False
         
         # Buscar tipo de punto en varios campos
+        extra_data = event.get('extra_data', {})
         points_type = (event.get('POINTS') or 
-                      event.get('extra_data', {}).get('TIPO-PUNTOS') or
-                      event.get('extra_data', {}).get('TIPO_PUNTOS') or
-                      event.get('extra_data', {}).get('POINTS_TYPE'))
+                      extra_data.get('TIPO-PUNTOS') or
+                      extra_data.get('TIPO_PUNTOS') or
+                      extra_data.get('TIPO-PERDIDA/RECUPERACIN') or  # A veces está mal etiquetado
+                      extra_data.get('POINTS_TYPE'))
         
-        return points_type and str(points_type).upper() == 'TRY'
+        is_try = points_type and str(points_type).upper() == 'TRY'
+        if is_try:
+            print(f"🔍 DEBUG: Try detectado en {event.get('timestamp_sec'):.1f}s, team={event.get('team', 'N/A')}")
+        return is_try
     
     # Función para encontrar el evento de origen más cercano
     def find_origin_event(try_event, all_events):
         try_time = try_event.get('timestamp_sec', 0)
         try_team = try_event.get('team', '')
         
-        # Buscar eventos de origen previos del mismo equipo
+        # Buscar eventos de origen en ventana de 2 minutos (120 segundos) antes del try
+        max_time_window = 120
+        
+        # Buscar eventos de origen previos
         candidates = []
         for event in all_events:
-            if (event.get('event_type', '').upper() in origin_categories and
-                event.get('timestamp_sec', 0) < try_time and
-                event.get('team', '') == try_team):
+            event_time = event.get('timestamp_sec', 0)
+            time_diff = try_time - event_time
+            
+            # Solo eventos dentro de la ventana de tiempo
+            if time_diff < 0 or time_diff > max_time_window:
+                continue
+                
+            event_type = event.get('event_type', '').upper()
+            
+            # Buscar eventos de origen (TURNOVER+, SCRUM, LINEOUT, KICK OFF, PENALTY a favor)
+            if event_type in origin_categories or event_type in ['TURNOVER+', 'KICK OFF', 'KICKOFF']:
+                # Si tenemos info de equipo, verificar que sea del mismo equipo
+                if try_team and event.get('team') and event.get('team') != try_team:
+                    continue
                 candidates.append(event)
         
         if not candidates:
+            print(f"⚠️  DEBUG: No se encontró origen para try en {try_time:.1f}s")
             return None
         
         # Retornar el evento más cercano al try
-        return max(candidates, key=lambda x: x.get('timestamp_sec', 0))
+        origin = max(candidates, key=lambda x: x.get('timestamp_sec', 0))
+        print(f"✅ DEBUG: Origen encontrado: {origin.get('event_type')} en {origin.get('timestamp_sec'):.1f}s")
+        return origin
     
     # Función para contar fases (rucks + 1) entre origen y try
     def count_phases(try_event, origin_event, all_events):
@@ -708,6 +730,101 @@ def calculate_try_origin_and_phases(events):
     return events
 
 
+def calculate_break_result(events):
+    """
+    Calcula el resultado de cada quiebre analizando los eventos posteriores.
+    
+    Args:
+        events: Lista de eventos ya normalizados y enriquecidos
+        
+    Returns:
+        Lista de eventos con BREAK_RESULT añadido en extra_data
+    """
+    if not events:
+        return events
+    
+    # Función para detectar si un evento es un quiebre
+    def is_break_event(event):
+        return event.get('event_type', '').upper() == 'BREAK'
+    
+    # Función para determinar el resultado del quiebre
+    def find_break_result(break_event, all_events):
+        break_time = break_event.get('timestamp_sec', 0)
+        break_team = break_event.get('team', '')
+        
+        # Ventana de 120 segundos después del quiebre
+        max_time_window = 120
+        
+        # Buscar eventos posteriores
+        for event in all_events:
+            event_time = event.get('timestamp_sec', 0)
+            time_diff = event_time - break_time
+            
+            # Solo eventos dentro de la ventana de tiempo
+            if time_diff <= 0 or time_diff > max_time_window:
+                continue
+            
+            event_type = event.get('event_type', '').upper()
+            event_team = event.get('team', '')
+            extra_data = event.get('extra_data', {})
+            
+            # TRY - Puntos anotados (del mismo equipo del quiebre)
+            if event_type == 'POINTS':
+                points_type = (extra_data.get('TIPO-PUNTOS') or 
+                             extra_data.get('TIPO_PUNTOS') or 
+                             extra_data.get('POINTS_TYPE') or '').upper()
+                if points_type == 'TRY' and event_team == break_team:
+                    return 'TRY', time_diff
+            
+            # PENALTY - Penal concedido (cualquier equipo)
+            if event_type == 'PENALTY':
+                # Si es penal a favor (del equipo del quiebre)
+                if event_team == break_team:
+                    return 'PENALTY_FOR', time_diff
+                # Si es penal en contra
+                elif event_team and event_team != break_team:
+                    return 'PENALTY_AGAINST', time_diff
+            
+            # TURNOVER - Pérdida de posesión
+            if event_type in ['TURNOVER-', 'TURNOVER']:
+                turnover_type = extra_data.get('TIPO-PERDIDA/RECUPERACION') or extra_data.get('TURNOVER_TYPE') or ''
+                # Si es pérdida del equipo del quiebre
+                if event_team == break_team:
+                    return f'TURNOVER_{turnover_type}', time_diff
+            
+            # KICK - Patada en juego
+            if event_type == 'KICK':
+                if event_team == break_team:
+                    return 'KICK', time_diff
+            
+            # GOAL-KICK - Patada a los palos
+            if event_type == 'GOAL-KICK':
+                if event_team == break_team:
+                    return 'GOAL_KICK_ATTEMPT', time_diff
+        
+        # Si no se encontró resultado específico
+        return 'CONTINUES', None
+    
+    # Procesar todos los eventos BREAK
+    for event in events:
+        if is_break_event(event):
+            # Encontrar resultado
+            result, time_to_result = find_break_result(event, events)
+            
+            # Añadir datos calculados a extra_data
+            if 'extra_data' not in event:
+                event['extra_data'] = {}
+            
+            event['extra_data']['BREAK_RESULT'] = result
+            if time_to_result:
+                event['extra_data']['BREAK_RESULT_TIME'] = round(time_to_result, 1)
+            
+            print(f"DEBUG: Break en {event.get('timestamp_sec'):.1f}s - resultado: {result}" + 
+                  (f" ({time_to_result:.1f}s después)" if time_to_result else ""))
+    
+    return events
+
+
 def enrich_events(events, match_info, profile=None):
     """
     Función principal de enriquecimiento.
@@ -738,5 +855,9 @@ def enrich_events(events, match_info, profile=None):
     # Calcular origen y fases de tries DESPUÉS de todo el procesamiento
     print("DEBUG: Calculando origen y fases de tries...")
     enriched = calculate_try_origin_and_phases(enriched)
+    
+    # Calcular resultado de quiebres
+    print("DEBUG: Calculando resultado de quiebres...")
+    enriched = calculate_break_result(enriched)
     
     return enriched

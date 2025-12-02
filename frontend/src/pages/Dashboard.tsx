@@ -38,8 +38,19 @@ export default function Dashboard() {
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">VideoAnalysis Dashboard</h1>
-      <h2 className="mb-6 text-lg text-gray-700">Selecciona partidos para el reporte MultiMatch</h2>
+      <div className="flex justify-between items-center mb-4">
+        <div>
+          <h1 className="text-2xl font-bold">VideoAnalysis Dashboard</h1>
+          <h2 className="text-lg text-gray-700">Selecciona partidos para el reporte MultiMatch</h2>
+        </div>
+        <Button
+          onClick={() => navigate('/admin/matches')}
+          variant="outline"
+          className="flex items-center gap-2"
+        >
+          ⚙️ Administrar Partidos
+        </Button>
+      </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         {matches.map((match: Match) => (
@@ -70,12 +81,19 @@ export default function Dashboard() {
                     Seleccionar para MultiMatch
                 </label>
                 </CardContent>
-                <CardFooter>
+                <CardFooter className="flex gap-2">
                 <button
-                    className="w-full bg-blue-600 text-white font-medium rounded-xl px-4 py-2 hover:bg-blue-700 transition"
+                    className="flex-1 bg-blue-600 text-white font-medium rounded-xl px-4 py-2 hover:bg-blue-700 transition"
                     onClick={() => navigate(`/analysis/${match.id}`, { state: { match } })}
                 >
-                    Ver análisis individual
+                    Ver análisis
+                </button>
+                <button
+                    className="px-3 py-2 border border-gray-300 rounded-xl hover:bg-gray-50 transition"
+                    onClick={() => navigate('/admin/matches')}
+                    title="Editar partido"
+                >
+                    ⚙️
                 </button>
                 </CardFooter>
             </Card>

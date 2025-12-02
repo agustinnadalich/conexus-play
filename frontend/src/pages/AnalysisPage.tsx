@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import Layout from "@/components/Layout";
 import HeaderPartido from "@/components/HeaderPartido";
 import Sidebar from "@/components/Sidebar";
 import TimelineChart from "@/components/charts/TimelineChart";
 import VideoPlayer from "@/components/VideoPlayer";
 import ChartsTabs from "@/components/ChartsTabs";
+import FieldMapChart from "@/components/charts/FieldMapChart";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { useEvents } from "@/hooks/useEvents";
 import { FilterProvider, useFilterContext } from "@/context/FilterContext";
@@ -96,6 +97,20 @@ const AnalysisPageContent = () => {
               </button>
             )}
             <HeaderPartido />
+            <div className="ml-auto flex gap-2">
+              <Link
+                to={`/analysis-neo/${matchId}`}
+                className="px-3 py-2 rounded-lg border border-indigo-200 text-indigo-700 hover:bg-indigo-50 text-sm"
+              >
+                Vista futurista
+              </Link>
+              <Link
+                to="/multi-match-report"
+                className="px-3 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 text-sm"
+              >
+                MultiMatch
+              </Link>
+            </div>
           </div>
             <div className="flex flex-col gap-4">
               <VideoPlayer videoUrl={videoUrl} />
@@ -111,6 +126,16 @@ const AnalysisPageContent = () => {
                   onEventClick={setSelectedEvent}
                   currentTime={currentTime}
                 />
+              </ErrorBoundary>
+              
+              {/* Mapa de cancha debajo de los tabs */}
+              <ErrorBoundary>
+                <div className="mt-6">
+                  <FieldMapChart 
+                    events={filteredEvents} 
+                    matchInfo={data?.match_info || {}} 
+                  />
+                </div>
               </ErrorBoundary>
             </div>
         </div>

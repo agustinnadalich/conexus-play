@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import YouTube from "react-youtube";
-import { usePlayback } from "@/context/PlaybackContext";
+import { usePlayback, resolveEventStart } from "@/context/PlaybackContext";
 import { Button } from "@/components/ui/button";
 
 const VideoPlayer = (props: any) => {
   const videoUrl = props.videoUrl ?? props.src ?? "";
   const { 
     currentTime, 
-    setCurrentTime, setIsPlaying, playFiltered, isPlaying, playNext, playPrev, selectedEvent } = usePlayback();
+    setCurrentTime, setIsPlaying, playFiltered, isPlaying, playNext, playPrev, selectedEvent, playRequestToken } = usePlayback();
 
 
   const videoRef = useRef<any>(null);
@@ -23,20 +23,59 @@ const VideoPlayer = (props: any) => {
   const draggingRef = useRef<{ dragging: boolean; offsetX: number; offsetY: number }>({ dragging: false, offsetX: 0, offsetY: 0 });
   const pipingRef = useRef<HTMLDivElement | null>(null);
 
-  // Reproducir evento específico
+  // Reproducir evento específico (incluye token para forzar retry)
   useEffect(() => {
-    if (!videoRef.current) return;
-    if (selectedEvent) {
-      const targetTime = selectedEvent.timestamp_sec ?? 0;
-      if (isYouTube) {
-        videoRef.current.seekTo(targetTime, true);
-        videoRef.current.playVideo();
-      } else {
-        videoRef.current.currentTime = targetTime;
-        videoRef.current.play();
+    if (!videoRef.current || !selectedEvent) return;
+
+    const targetTime = resolveEventStart(selectedEvent);
+    const player: any = videoRef.current;
+
+    const seekAndPlay = () => {
+      try {
+        if (isYouTube) {
+          player.pauseVideo?.();
+          player.seekTo(targetTime, true);
+          player.playVideo?.();
+        } else {
+          player.pause?.();
+          player.currentTime = targetTime;
+          const playPromise = player.play?.();
+          if (playPromise && typeof playPromise.catch === "function") {
+            playPromise.catch(() => {});
+          }
+        }
+        setCurrentTime(targetTime);
+        setIsPlaying(true);
+      } catch (err) {
+        console.warn("No se pudo saltar al evento seleccionado", err);
       }
-    }
-  }, [selectedEvent, isYouTube]);
+    };
+
+    seekAndPlay();
+
+    // Segundo intento breve para evitar que quede pausado si el player ignora la primera orden
+    const retry = window.setTimeout(() => {
+      try {
+        if (isYouTube) {
+          player.playVideo?.();
+        } else {
+          const playPromise = player.play?.();
+          if (playPromise && typeof playPromise.catch === "function") {
+            playPromise.catch(() => {});
+          }
+        }
+        setIsPlaying(true);
+      } catch (err) {
+        // noop
+      }
+    }, 120);
+
+    return () => {
+      if (retry) {
+        clearTimeout(retry);
+      }
+    };
+  }, [selectedEvent, isYouTube, setCurrentTime, setIsPlaying, playRequestToken]);
 
   // Manejar reproducción/pausa
   useEffect(() => {

@@ -46,15 +46,19 @@ const TacklesEffectivityChart = ({ events, onChartClick }) => {
     const datasetIndex = el.datasetIndex ?? el.dataset?.datasetIndex ?? el.element?.$context?.datasetIndex ?? el.element?.datasetIndex;
     const dataIndex = el.index ?? el.element?.index ?? el.element?.$context?.dataIndex ?? el.element?.$context?.dataIndex;
 
-    // Usar categorías agregadas para multi-match
-    const teamCategory = dataIndex === 0 ? 'OUR_TEAM' : 'Rival';
+    // Usar nombres reales de equipos
+    const teamCategory = dataIndex === 0 
+      ? (matchInfo?.team_name || matchInfo?.TEAM || ourTeamsList[0] || 'PESCARA')
+      : (matchInfo?.opponent_name || matchInfo?.OPPONENT || 'RIVAL');
     const tackleType = datasetIndex === 0 ? 'TACKLE' : 'MISSED-TACKLE';
 
     console.log("🎯 TacklesEffectivityChart - Clicked:", { teamCategory, tackleType, datasetIndex, dataIndex });
 
-    // Enviar filtros con categorías agregadas
-    const filters: any[] = [{ descriptor: 'event_type', value: tackleType }];
-    filters.push({ descriptor: 'TEAM', value: teamCategory });
+    // Enviar filtros con nombres reales
+    const filters: any[] = [
+      { descriptor: 'event_type', value: tackleType },
+      { descriptor: 'EQUIPO', value: teamCategory }  // Usar EQUIPO que es el campo real en extra_data
+    ];
 
     if (onChartClick) {
       try {

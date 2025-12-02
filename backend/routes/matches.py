@@ -181,6 +181,152 @@ def delete_match(id):
         db.close()
 
 
+@match_bp.route('/matches/<int:id>/recalculate-times', methods=['POST'])
+def recalculate_match_times(id):
+    """
+    Recalcula los Game_Time de todos los eventos del partido
+    usando los tiempos manuales configurados (kick_off_1_seconds, end_1_seconds, etc.)
+    """
+    db = SessionLocal()
+    try:
+        # 1. Buscar el partido
+        match = db.query(Match).get(id)
+        if not match:
+            return jsonify({"error": "Partido no encontrado"}), 404
+        
+        # 2. Obtener todos los eventos del partido
+        events = db.query(Event).filter(Event.match_id == id).order_by(Event.timestamp_sec).all()
+        if not events:
+            return jsonify({"error": "No hay eventos para recalcular"}), 404
+        
+        print(f"🔄 Recalculando Game_Time para {len(events)} eventos del partido {id}")
+        
+        # 3. Obtener tiempos manuales del partido
+        # IMPORTANTE: Los valores son SEGUNDOS DEL VIDEO
+        # kick_off_1: Segundo del video donde inicia el partido (negativo si no está filmado)
+        # end_1: Segundo del video donde termina el primer tiempo (~40' Game_Time)
+        # kick_off_2: Segundo del video donde inicia el segundo tiempo  
+        # end_2: Segundo del video donde termina el partido (~80' Game_Time)
+        #
+        # Ejemplo: kick_off_1 = -120, end_1 = 2280
+        #   → El partido inició 120s antes del inicio del video
+        #   → El primer tiempo termina en el segundo 2280 del video
+        #   → Duración REAL del primer tiempo = 2280 - (-120) = 2400s
+        kick_off_1 = match.kick_off_1_seconds or 0
+        end_1 = match.end_1_seconds or 2400  # Último segundo del 1er tiempo en el video
+        kick_off_2 = match.kick_off_2_seconds or 2700
+        end_2 = match.end_2_seconds or 4800
+        
+        # Calcular la duración REAL del primer tiempo basándose en los timestamps del video.
+        # Si hay tiempo adicional o interrupciones largas, esto se refleja en end_1 - kick_off_1
+        first_half_duration = end_1 - kick_off_1
+        
+        print(f"📊 Tiempos configurados:")
+        print(f"   Kick off 1: {kick_off_1}s")
+        print(f"   End 1: {end_1}s")
+        print(f"   Kick off 2: {kick_off_2}s")
+        print(f"   End 2: {end_2}s")
+        print(f"   Duración 1er tiempo: {first_half_duration}s")
+        
+        # 4. Recalcular Game_Time para cada evento
+        updated_count = 0
+        for event in events:
+            timestamp = event.timestamp_sec
+            event_type = event.event_type.upper()
+            
+            # Determinar período
+            if timestamp < kick_off_2:
+                period = 1
+            else:
+                period = 2
+            
+            # Calcular Game_Time
+            if event_type == 'KICK OFF':
+                if abs(timestamp - kick_off_1) < 1:  # Primer kick off
+                    game_time_sec = 0
+                elif abs(timestamp - kick_off_2) < 1:  # Segundo kick off
+                    game_time_sec = first_half_duration
+                else:  # Otros kick offs
+                    if period == 1:
+                        game_time_sec = max(0, timestamp - kick_off_1)
+                    else:
+                        game_time_sec = first_half_duration + (timestamp - kick_off_2)
+            elif event_type == 'END':
+                if abs(timestamp - end_1) < 1:  # Fin del primer tiempo
+                    game_time_sec = first_half_duration
+                elif abs(timestamp - end_2) < 1:  # Fin del segundo tiempo
+                    second_half_duration = end_2 - kick_off_2
+                    game_time_sec = first_half_duration + second_half_duration
+                else:  # Otros ends
+                    if period == 1:
+                        game_time_sec = max(0, timestamp - kick_off_1)
+                    else:
+                        game_time_sec = first_half_duration + (timestamp - kick_off_2)
+            else:
+                # Eventos normales
+                if period == 1:
+                    game_time_sec = max(0, timestamp - kick_off_1)
+                else:
+                    game_time_sec = first_half_duration + (timestamp - kick_off_2)
+            
+            # Formatear como MM:SS
+            minutes = int(game_time_sec // 60)
+            seconds = int(game_time_sec % 60)
+            game_time_str = f"{minutes:02d}:{seconds:02d}"
+            
+            # Actualizar extra_data
+            if event.extra_data is None:
+                event.extra_data = {}
+            
+            event.extra_data['Game_Time'] = game_time_str
+            event.extra_data['DETECTED_PERIOD'] = period
+            
+            # Calcular Time_Group (cuartos)
+            if game_time_sec < 1200:
+                time_group = "0'- 20'"
+            elif game_time_sec < 2400:
+                time_group = "20' - 40'"
+            elif game_time_sec < 3600:
+                time_group = "40' - 60'"
+            else:
+                time_group = "60' - 80'"
+            
+            event.extra_data['Time_Group'] = time_group
+            
+            # Marcar como modificado (para JSONB)
+            from sqlalchemy.orm.attributes import flag_modified
+            flag_modified(event, "extra_data")
+            
+            updated_count += 1
+        
+        # 5. Commit de los cambios
+        db.commit()
+        
+        print(f"✅ {updated_count} eventos actualizados")
+        
+        return jsonify({
+            "message": "Game_Time recalculado exitosamente",
+            "match_id": id,
+            "events_updated": updated_count,
+            "times_used": {
+                "kick_off_1_seconds": kick_off_1,
+                "end_1_seconds": end_1,
+                "kick_off_2_seconds": kick_off_2,
+                "end_2_seconds": end_2,
+                "first_half_duration": first_half_duration
+            }
+        }), 200
+        
+    except Exception as e:
+        db.rollback()
+        print(f"❌ ERROR recalculando Game_Time: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"Error recalculando tiempos: {str(e)}"}), 500
+    finally:
+        db.close()
+
+
 __all__ = ['match_bp']
 
 

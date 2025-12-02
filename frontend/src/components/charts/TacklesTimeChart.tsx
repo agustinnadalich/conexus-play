@@ -76,7 +76,21 @@ const TacklesTimeChart = ({ events, onChartClick }) => {
       "60' - 80'"
     ];
 
-    // Función para determinar el grupo de tiempo basado en segundos
+    // Función para extraer Game_Time en segundos de extra_data
+    const getGameTimeInSeconds = (event: any) => {
+      // Primero intentar Game_Time de extra_data (formato "MM:SS")
+      const gameTimeStr = event.extra_data?.Game_Time;
+      if (gameTimeStr && typeof gameTimeStr === 'string') {
+        const [mins, secs] = gameTimeStr.split(':').map(Number);
+        if (!isNaN(mins) && !isNaN(secs)) {
+          return mins * 60 + secs;
+        }
+      }
+      // Fallback: otros campos o timestamp_sec como último recurso
+      return Number(event.Game_Time ?? event.game_time ?? event.timestamp_sec ?? 0) || 0;
+    };
+
+    // Función para determinar el grupo de tiempo basado en segundos de juego
     const getTimeGroup = (seconds) => {
       if (seconds < 1200) return "0'- 20'";      // 0-20 minutos
       if (seconds < 2400) return "20' - 40'";    // 20-40 minutos
@@ -91,7 +105,7 @@ const TacklesTimeChart = ({ events, onChartClick }) => {
         label: "Tackles Exitosos",
         data: timeGroups.map(group => {
         const groupEvents = pointsEvents.filter(event => {
-          const timeInSeconds = event.timestamp_sec || event.Game_Time || 0;
+          const timeInSeconds = getGameTimeInSeconds(event);
           const eventTimeGroup = getTimeGroup(timeInSeconds);
           return eventTimeGroup === group && (event.event_type === "TACKLE" || event.CATEGORY === "TACKLE");
         });
@@ -105,7 +119,7 @@ const TacklesTimeChart = ({ events, onChartClick }) => {
         label: "Tackles Errados",
         data: timeGroups.map(group => {
         const groupEvents = pointsEvents.filter(event => {
-          const timeInSeconds = event.timestamp_sec || event.Game_Time || 0;
+          const timeInSeconds = getGameTimeInSeconds(event);
           const eventTimeGroup = getTimeGroup(timeInSeconds);
           return eventTimeGroup === group && event.event_type === "MISSED-TACKLE";
         });

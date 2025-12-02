@@ -65,17 +65,19 @@ def get_match_events(match_id):
             # Serializar extra_data de forma segura
             safe_extra_data = safe_serialize(event.extra_data) if event.extra_data is not None else {}
             
-            # Calcular los campos de tiempo de juego
+            # Obtener timestamp y período
             timestamp_sec = safe_serialize(event.timestamp_sec)
-            period_value = safe_extra_data.get("period") if isinstance(safe_extra_data, dict) else 1
             
-            # Convertir period de forma segura
+            # IMPORTANTE: Usar Game_Time de extra_data (ya calculado por recalculate-times)
+            # en lugar de recalcular desde timestamp_sec (que son segundos del video, no del juego)
+            game_time = safe_extra_data.get("Game_Time", "00:00") if isinstance(safe_extra_data, dict) else "00:00"
+            
+            # Obtener período de extra_data (calculado por backend)
+            period = safe_extra_data.get("DETECTED_PERIOD", 1) if isinstance(safe_extra_data, dict) else 1
             try:
-                period = int(period_value) if period_value is not None and isinstance(period_value, (int, float, str)) else 1
+                period = int(period)
             except (ValueError, TypeError):
                 period = 1
-                
-            game_time = seconds_to_game_time(timestamp_sec, period) if timestamp_sec is not None else "00:00"
 
             # Extraer jugadores de extra_data (puede ser string o array)
             players_raw = safe_extra_data.get("PLAYER") or safe_extra_data.get("PLAYERS") if isinstance(safe_extra_data, dict) else None
@@ -455,8 +457,19 @@ def get_match_info(match_id):
                 "id": match.id,
                 "video_url": match.video_url,
                 "VIDEO_URL": match.video_url,  # Para compatibilidad
-                "opponent_name": match.opponent_name,
-                "date": match.date.isoformat() if match.date else None,
+                "TEAM": match.team.name if match.team else "N/A",
+                "OPPONENT_NAME": match.opponent_name,
+                "DATE": match.date.isoformat() if match.date else None,
+                "COMPETITION": match.competition,
+                "ROUND": match.round,
+                "FIELD": match.field or match.location,
+                "LOCATION": match.location,
+                "RAIN": match.rain,
+                "MUDDY": match.muddy,
+                "WIND_1P": match.wind_1p,
+                "WIND_2P": match.wind_2p,
+                "REFEREE": match.referee,
+                "RESULT": match.result,
                 "kick_off_1_seconds": match.kick_off_1_seconds,
                 "end_1_seconds": match.end_1_seconds,
                 "kick_off_2_seconds": match.kick_off_2_seconds,

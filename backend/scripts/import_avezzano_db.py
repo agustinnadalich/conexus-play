@@ -1,0 +1,102 @@
+#!/usr/bin/env python3
+"""
+Script para importar partido Avezzano vs Pescara
+"""
+import sys
+import os
+
+backend_path = os.path.join(os.path.dirname(__file__), '..')
+sys.path.insert(0, backend_path)
+
+from importer import import_match_from_xml
+from db import SessionLocal
+from models import Match, Event
+
+def import_avezzano():
+    """
+    Importa el partido Avezzano vs Pescara
+    """
+    print("=" * 80)
+    print("🏉 IMPORTACIÓN DE PARTIDO: Avezzano vs Pescara")
+    print("=" * 80)
+    
+    # Configuración del partido
+    profile = {
+        "team": "Pescara",
+        "opponent": "Avezzano",
+        "date": "2025-10-19",
+        "location": "Avezzano",
+        "video_url": "https://www.youtube.com/watch?v=xxxxx",
+        "competition": "Serie B",
+        "round": "Jornada X",
+        "field": "Avezzano",
+        "manual_period_times": {
+            "kick_off_1": 0,
+            "end_1": 2400,
+            "kick_off_2": 2700,
+            "end_2": 4800
+        }
+    }
+    
+    xml_path = "/app/uploads/20251019 Az-Pescara (2).xml"
+    
+    if not os.path.exists(xml_path):
+        print(f"❌ Error: No se encuentra el archivo {xml_path}")
+        return False
+    
+    print(f"\n📁 Archivo XML encontrado: {xml_path}")
+    print(f"📊 Equipo: {profile['team']}")
+    print(f"⚔️  Rival: {profile['opponent']}")
+    print(f"📅 Fecha: {profile['date']}")
+    print(f"📍 Ubicación: {profile['location']}")
+    print("\n" + "=" * 80)
+    
+    result = import_match_from_xml(xml_path, profile)
+    
+    if result:
+        print("\n" + "=" * 80)
+        print("✅ IMPORTACIÓN EXITOSA")
+        print("=" * 80)
+        
+        db = SessionLocal()
+        try:
+            matches = db.query(Match).filter_by(opponent_name=profile['opponent']).all()
+            if matches:
+                latest_match = matches[-1]
+                events_count = db.query(Event).filter_by(match_id=latest_match.id).count()
+                
+                print(f"\n📊 Estadísticas del partido importado:")
+                print(f"   - ID del partido: {latest_match.id}")
+                print(f"   - Fecha: {latest_match.date}")
+                print(f"   - Ubicación: {latest_match.location}")
+                print(f"   - Eventos importados: {events_count}")
+                
+                from sqlalchemy import func
+                categories = db.query(
+                    Event.event_type, 
+                    func.count(Event.id)
+                ).filter_by(match_id=latest_match.id).group_by(Event.event_type).all()
+                
+                print(f"\n📈 Eventos por categoría:")
+                for category, count in sorted(categories, key=lambda x: x[1], reverse=True)[:10]:
+                    print(f"   - {category}: {count}")
+                
+        except Exception as e:
+            print(f"⚠️  Error al verificar datos: {e}")
+        finally:
+            db.close()
+        
+        print("\n" + "=" * 80)
+        print("🎉 ¡Listo para visualizar en el dashboard!")
+        print("=" * 80)
+        return True
+    else:
+        print("\n" + "=" * 80)
+        print("❌ IMPORTACIÓN FALLIDA")
+        print("=" * 80)
+        return False
+
+
+if __name__ == "__main__":
+    success = import_avezzano()
+    sys.exit(0 if success else 1)

@@ -148,7 +148,16 @@ const TimelineChart = ({ filteredEvents, onEventClick }: { filteredEvents: Match
       // Obtener información del jugador (omitir placeholders como 'unknown')
       let playerInfo: string | null = null;
       const placeholderNames = new Set(['unknown', 'Unknown', 'UNKNOWN', 'N/A', 'n/a', 'None', 'null']);
-      const rawPlayer = event.extra_data?.JUGADOR ?? event.player_name ?? event.player ?? null;
+      
+      // Prioridad 1: event.players (array desde API base_de_datos)
+      let rawPlayer = null;
+      if (event.players && Array.isArray(event.players)) {
+        rawPlayer = event.players;
+      } else {
+        // Prioridad 2-4: campos legacy
+        rawPlayer = event.extra_data?.JUGADOR ?? event.player_name ?? event.player ?? null;
+      }
+      
       if (rawPlayer) {
         if (Array.isArray(rawPlayer)) {
           const joined = rawPlayer.join(', ');
@@ -159,19 +168,28 @@ const TimelineChart = ({ filteredEvents, onEventClick }: { filteredEvents: Match
         }
       }
 
-      // Obtener otros descriptores relevantes, filtrando claves/valores redundantes
+      // Campos calculados importantes (mostrar siempre)
+      const gameTime = event.extra_data?.Game_Time || event.Game_Time || 'N/A';
+      const period = event.extra_data?.DETECTED_PERIOD || event.period || 'N/A';
+      const timeGroup = event.extra_data?.Time_Group || 'N/A';
+      
+      // Obtener TODOS los descriptores del extra_data
       const otherDescriptors: string[] = [];
-      // Claves que no tienen sentido en el tooltip (insensible a mayúsculas)
+      // Solo excluir campos técnicos internos, NO los descriptores del juego
       const excludedKeysList = [
-        'JUGADOR', 'duration', 'DURATION', 'clip_start', 'clip_end',
-        'Time_Group', 'TIME_GROUP', 'time_group', 'PERIOD', 'Period', 'period',
-        'Game_Time', 'GAME_TIME', 'game_time', 'Start', 'End', 'TIME', 'Time',
-        // Campos generados por el normalizador/enricher que no aportan en tooltip
+        'JUGADOR', 'PLAYER', 'PLAYERS', 'duration', 'DURATION', 'clip_start', 'clip_end',
+        'Start', 'End', 'TIME', 'Time',
+        // Campos internos/técnicos
         'Original_start', 'Original_end', 'original_start', 'original_end',
-        'original_start_seconds', 'original_end_seconds', 'detected_period', 'detected_periods', 'detectedPeriod', 'detected_period_name'
+        'original_start_seconds', 'original_end_seconds',
+        // Ya los mostramos por separado
+        'Game_Time', 'GAME_TIME', 'game_time', 
+        'DETECTED_PERIOD', 'detected_period', 'Period', 'period',
+        'Time_Group', 'TIME_GROUP', 'time_group'
       ];
       const excludedKeys = new Set(excludedKeysList.map(k => k.toLowerCase()));
-      const excludedValues = new Set(['unknown', 'Unknown', 'UNKNOWN', 'N/A', 'n/a', 'null', 'None']);
+      const excludedValues = new Set(['unknown', 'Unknown', 'UNKNOWN', 'N/A', 'n/a', 'null', 'None', '']);
+      
       if (event.extra_data) {
         for (const [key, value] of Object.entries(event.extra_data)) {
           if (excludedKeys.has(String(key).toLowerCase())) continue;
@@ -186,22 +204,43 @@ const TimelineChart = ({ filteredEvents, onEventClick }: { filteredEvents: Match
           }
         }
       }
-      // Limitar la cantidad de detalles mostrados para no saturar el tooltip
-      const MAX_DETAILS = 5;
-      const displayedDetails = otherDescriptors.slice(0, MAX_DETAILS);
+      
+      // NO limitar - mostrar todos los descriptores
+      const displayedDetails = otherDescriptors;
 
       return (
-        <div className="rounded bg-white p-2 shadow-md border border-gray-200 text-sm max-w-xs">
-          {playerInfo && <div><strong>Jugador:</strong> {playerInfo}</div>}
-          <div><strong>Tiempo:</strong> {secondsToGameClock(event.SECOND)}</div>
-          <div><strong>Duración:</strong> {Math.round(event.DURATION * 10) / 10}s</div>
-          <div><strong>Categoría:</strong> {event.category}</div>
+        <div className="rounded bg-white p-3 shadow-lg border border-gray-300 text-sm max-w-md max-h-96 overflow-y-auto">
+          <div className="font-bold text-base mb-2 text-blue-700">{event.category}</div>
+          
+          {/* Información de tiempo */}
+          <div className="mb-2 pb-2 border-b border-gray-200">
+            <div className="grid grid-cols-2 gap-1 text-xs">
+              <div><strong>Timestamp:</strong> {secondsToGameClock(event.SECOND)}</div>
+              <div><strong>Duración:</strong> {Math.round(event.DURATION * 10) / 10}s</div>
+              <div><strong>Game Time:</strong> <span className="text-green-600 font-semibold">{gameTime}</span></div>
+              <div><strong>Período:</strong> <span className="text-purple-600 font-semibold">{period}</span></div>
+              <div className="col-span-2"><strong>Bloque:</strong> <span className="text-orange-600 font-semibold">{timeGroup}</span></div>
+            </div>
+          </div>
+          
+          {/* Jugador */}
+          {playerInfo && (
+            <div className="mb-2 pb-2 border-b border-gray-200">
+              <div><strong>Jugador:</strong> <span className="text-blue-600 font-semibold">{playerInfo}</span></div>
+            </div>
+          )}
+          
+          {/* Todos los descriptores */}
           {displayedDetails.length > 0 && (
-            <div className="mt-2 pt-2 border-t border-gray-200">
-              <div><strong>Detalles:</strong></div>
-              {displayedDetails.map((desc, idx) => (
-                <div key={idx} className="text-xs text-gray-600 ml-2">• {desc}</div>
-              ))}
+            <div>
+              <div className="font-semibold mb-1 text-gray-700">Descriptores:</div>
+              <div className="grid grid-cols-1 gap-0.5">
+                {displayedDetails.map((desc, idx) => (
+                  <div key={idx} className="text-xs text-gray-700 pl-2 py-0.5 hover:bg-gray-50">
+                    • {desc}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>

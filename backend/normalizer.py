@@ -839,10 +839,11 @@ def normalize_xml_to_json(filepath, profile, discard_categories=None, translator
                     else:
                         descriptors[key] = text
 
-            # Determinar período basado en el tiempo absoluto
+            # Determinar período basado en el tiempo absoluto del partido
             period = 1
             for p, offsets in time_offsets.items():
-                if abs_start >= offsets['start_offset'] and abs_start < (offsets.get('end_time', float('inf')) + offsets['start_offset']):
+                # Comparar directamente con start_time y end_time (tiempos absolutos)
+                if timestamp >= offsets.get('start_time', 0) and timestamp < offsets.get('end_time', float('inf')):
                     period = p
                     break
             
@@ -853,21 +854,34 @@ def normalize_xml_to_json(filepath, profile, discard_categories=None, translator
                 if event_type != original_event_type:
                     print(f"🔄 Categoría traducida: {original_event_type} → {event_type}")
 
+            # Extraer descriptores importantes a nivel superior para fácil acceso
+            turnover_type = (descriptors.get('TIPO-PERDIDA/RECUPERACIÓN') or 
+                           descriptors.get('TIPO-PERDIDA/RECUPERACIN') or 
+                           descriptors.get('TIPO_PERDIDA/RECUPERACION'))
+            infraction_type = descriptors.get('INFRACCION') or descriptors.get('INFRACTION_TYPE')
+            
+            game_time_str = seconds_to_game_time(timestamp, period, time_offsets)
+            
             event = {
                 "event_type": event_type,
                 "timestamp_sec": round(timestamp, 1),
-                "Game_Time": seconds_to_game_time(timestamp, period, time_offsets),
-                "game_time": seconds_to_game_time(timestamp, period, time_offsets),
+                "Game_Time": game_time_str,
+                "game_time": game_time_str,
                 "players": None,
                 "x": x,
                 "y": y,
                 "team": "OPPONENT" if descriptors.get('EQUIPO') == "RIVAL" else descriptors.get('EQUIPO'),
                 "period": period,
+                "TURNOVER_TYPE": turnover_type,
+                "INFRACTION_TYPE": infraction_type,
                 "extra_data": {
                     "clip_start": abs_start,
                     "clip_end": abs_end,
                     "original_start": start,
                     "original_end": end,
+                    "Game_Time": game_time_str,  # Copiar también a extra_data
+                    "game_time": game_time_str,
+                    "DETECTED_PERIOD": period,
                     **descriptors
                 }
             }
