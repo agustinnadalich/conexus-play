@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Bar } from 'react-chartjs-2';
+import { matchesCategory } from '@/utils/eventUtils';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -16,6 +17,9 @@ interface PenaltiesTimeChartProps {
   events: any[];
   onFilter?: (filterFn: (event: any) => boolean) => void;
   onChartClick?: (...args: any[]) => void;
+  category?: string; // PENALTY / FREE-KICK
+  title?: string;
+  tabId?: string;
 }
 
 const canonicalGroups = ["0'- 20'", "20'- 40'", "40'- 60'", "60'- 80'"];
@@ -90,31 +94,35 @@ const isOpponent = (event: any) => {
   return false;
 };
 
-const PenaltiesTimeChart: React.FC<PenaltiesTimeChartProps> = ({ events, onFilter, onChartClick }) => {
+const PenaltiesTimeChart: React.FC<PenaltiesTimeChartProps> = ({ events, onFilter, onChartClick, category = 'PENALTY', title = 'Penales por Bloque de Tiempo', tabId = 'penalties-tab' }) => {
   const [chartData, setChartData] = useState<any>(null);
 
   useEffect(() => {
-    const penaltiesEvents = events.filter(e => e.event_type === 'PENALTY' || e.CATEGORY === 'PENALTY');
+    const penaltiesEvents = events.filter(e => matchesCategory(e, category));
     const teamCounts = canonicalGroups.map(group => penaltiesEvents.filter(event => getTimeGroupCanonical(event) === group && !isOpponent(event)).length);
     const rivalCounts = canonicalGroups.map(group => penaltiesEvents.filter(event => getTimeGroupCanonical(event) === group && isOpponent(event)).length);
     const labels = canonicalGroups.filter((_, index) => teamCounts[index] + rivalCounts[index] > 0);
+    if (labels.length === 0) {
+      setChartData(null);
+      return;
+    }
     const data = {
       labels,
       datasets: [
         {
-          label: 'Penales Equipo',
+          label: 'Equipo',
           data: labels.map(label => teamCounts[canonicalGroups.indexOf(label)]),
           backgroundColor: 'rgba(30, 144, 255, 0.6)',
         },
         {
-          label: 'Penales Rival',
+          label: 'Rival',
           data: labels.map(label => rivalCounts[canonicalGroups.indexOf(label)]),
           backgroundColor: 'rgba(255, 99, 132, 0.6)',
         },
       ],
     };
     setChartData(data);
-  }, [events]);
+  }, [events, category]);
 
   const handleBarClick = (event: any, elements: any[]) => {
     if (!elements || elements.length === 0) return;
@@ -126,15 +134,16 @@ const PenaltiesTimeChart: React.FC<PenaltiesTimeChartProps> = ({ events, onFilte
     const isRivalDataset = datasetLabel.toLowerCase().includes('rival');
     const additionalFilters = [] as Array<{ descriptor: string; value: string }>;
     if (label) additionalFilters.push({ descriptor: 'Time_Group', value: label });
+    additionalFilters.push({ descriptor: 'CATEGORY', value: category });
     // additionalFilters.push({ descriptor: 'TEAM_FILTER', value: isRivalDataset ? 'RIVAL' : 'TEAM' });
 
     if (onChartClick) {
-      onChartClick(event, elements, chart, 'time', 'penalties-tab', additionalFilters);
+      onChartClick(event, elements, chart, 'time', tabId, additionalFilters);
     }
 
     if (onFilter && label) {
       onFilter((e: any) => {
-        if (e.event_type !== 'PENALTY' && e.CATEGORY !== 'PENALTY') return false;
+        if (!matchesCategory(e, category)) return false;
         const group = getTimeGroupCanonical(e);
         if (!group) return false;
         if (group !== label) return false;
@@ -143,7 +152,7 @@ const PenaltiesTimeChart: React.FC<PenaltiesTimeChartProps> = ({ events, onFilte
     }
   };
 
-  if (!chartData) return <div>Cargando gráfico de tiempo...</div>;
+  if (!chartData) return null;
 
   const options = {
     responsive: true,
@@ -151,10 +160,10 @@ const PenaltiesTimeChart: React.FC<PenaltiesTimeChartProps> = ({ events, onFilte
       legend: {
         position: 'top' as const,
       },
-      title: {
-        display: true,
-        text: 'Penales por Bloque de Tiempo',
-      },
+            title: {
+              display: true,
+              text: title,
+            },
       tooltip: {
         callbacks: {
           label: (context: any) => `${context.dataset.label}: ${context.raw}`,

@@ -41,11 +41,32 @@ import LineBreaksChannelTeamChart from "./charts/LineBreaksChannelTeamChart";
 import LineBreaksChannelOpponentChart from "./charts/LineBreaksChannelOpponentChart";
 import LineBreaksTimeChart from "./charts/LineBreaksTimeChart";
 import LineBreaksResultChart from "./charts/LineBreaksResultChart";
+import CardsSummaryChart from "./charts/CardsSummaryChart";
+import PassesOutcomeChart from "./charts/PassesOutcomeChart";
+import MaulsOutcomeChart from "./charts/MaulsOutcomeChart";
+import OpenPlayKicksChart from "./charts/OpenPlayKicksChart";
+import PossessionShareChart from "./charts/PossessionShareChart";
+import InfringementsCauseChart from "./charts/InfringementsCauseChart";
+import RucksSpeedPieChart from "./charts/RucksSpeedPieChart";
+import OpenPlayKicksTeamPieChart from "./charts/OpenPlayKicksTeamPieChart";
+import OpenPlayKicksPlayerChart from "./charts/OpenPlayKicksPlayerChart";
+import RucksFieldZonesChart from "./charts/RucksFieldZonesChart";
 // import TimelineChart from "./charts/TimelineChart";
 // import ScatterChart from "./charts/ScatterChart";
 // Aquí luego podrás importar los otros charts
 import { useFilterContext } from "../context/FilterContext";
 import { getTeamFromEvent, normalizeString, isOurTeam, computeTackleStatsAggregated, detectOurTeams } from "../utils/teamUtils";
+import { matchesCategory, isOpponentEvent as isOpponent } from "../utils/eventUtils";
+
+const getPlayerNameGeneric = (event: any): string | null => {
+  if (event?.players && Array.isArray(event.players) && event.players.length > 0) return event.players[0];
+  if (event?.PLAYER) return Array.isArray(event.PLAYER) ? event.PLAYER[0] : event.PLAYER;
+  const ed = event?.extra_data || {};
+  const candidate = event?.player_name || event?.JUGADOR || ed.JUGADOR || ed.PLAYER;
+  if (!candidate) return null;
+  const s = String(candidate).trim();
+  return s.length ? s : null;
+};
 import type { MatchEvent } from "@/types";
 
 
@@ -245,11 +266,26 @@ const ChartsTabs = (_props: any) => {
   });
   const triesOriginStatus = getTriesOriginStatus(eventsForPresence || []);
   const hasOriginData = triesOriginStatus === 'calculated';
-  const hasPenalties = (filteredEvents || []).some((event) => event.CATEGORY === "PENALTY" || event.event_type === "PENALTY");
+  const hasPenalties = (eventsForPresence || []).some((event) => matchesCategory(event, 'PENALTY', ['PENAL']));
+  const hasFreeKicks = (eventsForPresence || []).some((event) => matchesCategory(event, 'FREE-KICK', ['FREEKICK', 'FREE KICK']));
   const hasTurnovers = (filteredEvents || []).some((event) => event.CATEGORY === "TURNOVER+" || event.CATEGORY === "TURNOVER-" || event.event_type === "TURNOVER+" || event.event_type === "TURNOVER-");
   const hasSetPieces = (filteredEvents || []).some((event) => event.CATEGORY === "SCRUM" || event.CATEGORY === "LINEOUT" || event.event_type === "SCRUM" || event.event_type === "LINEOUT");
   const hasGoalKicks = (filteredEvents || []).some((event) => event.CATEGORY === "GOAL-KICK" || event.event_type === "GOAL-KICK");
   const hasLineBreaks = (filteredEvents || []).some((event) => event.CATEGORY === "BREAK" || event.event_type === "BREAK");
+  const hasCards = (eventsForPresence || []).some((event) => matchesCategory(event, 'CARD', ['TARJETA', 'YELLOW-CARD', 'RED-CARD']) || (matchesCategory(event, 'PENALTY', ['PENAL']) && (String(event.AVANCE ?? event.ADVANCE ?? event.extra_data?.AVANCE ?? event.extra_data?.ADVANCE ?? '').trim() !== '')));
+  const hasPasses = false; // ocultado por ahora
+  const hasErrors = false; // ocultado por ahora
+  const hasAdvances = false; // ocultado por ahora
+  const hasScatter = false; // ocultado por ahora
+  const hasRucks = (eventsForPresence || []).some((event) => matchesCategory(event, 'RUCK', ['RUCKS', 'RACK', 'RUK']));
+  const hasMauls = (eventsForPresence || []).some((event) => matchesCategory(event, 'MAUL', ['MAULS', 'MAULL']));
+  const hasOpenKicks = (eventsForPresence || []).some((event) => matchesCategory(event, 'KICK', ['PATADA', 'KICK-OPEN', 'OPEN-PLAY-KICK']) && !matchesCategory(event,'GOAL-KICK',['CONVERSION','PENAL','PENALTY','DROP GOAL']));
+  const hasPossession = (events || []).some((event) => matchesCategory(event, 'POSSESSION', ['POSESION', 'ATTACK', 'DEFENSE', 'POSSESSION_START']));
+  const penaltyEvents = filteredEvents.filter(e => matchesCategory(e, 'PENALTY', ['PENAL']));
+  const freeKickEvents = filteredEvents.filter(e => matchesCategory(e, 'FREE-KICK', ['FREEKICK', 'FREE KICK']));
+  const hasPenaltyPlayers = penaltyEvents.some(e => getPlayerNameGeneric(e));
+  const hasFreeKickPlayers = freeKickEvents.some(e => getPlayerNameGeneric(e));
+  const hasRuckPositions = filteredEvents.some(e => matchesCategory(e,'RUCK',['RUCKS','RACK','RUK']) && (e.pos_x !== undefined || e.x !== undefined || e.COORDINATE_X !== undefined || e.extra_data?.pos_x !== undefined || e.extra_data?.x !== undefined));
 
   // Función para manejar clicks en gráficos y agregar filtros
   const handleChartClick = (...args: any[]) => {
@@ -520,6 +556,21 @@ const ChartsTabs = (_props: any) => {
           console.log("🔍 CATEGORY check:", evCat, "expected->", value, "->", matches);
           return matches;
         }
+
+        // Filtrado para TEAM_SIDE (our/opponent)
+        if (descriptor === 'TEAM_SIDE') {
+          const isOpp = isOpponent(event);
+          return (String(value).toUpperCase().includes('OPP')) ? isOpp : !isOpp;
+        }
+
+        // Filtrado para RUCK_SPEED_TAG
+        if (descriptor === 'RUCK_SPEED_TAG') {
+          const speedVal = Number(
+            event.RUCK_SPEED ?? event.ruck_speed ?? event.extra_data?.RUCK_SPEED ?? event.extra_data?.ruck_speed ?? event.extra_data?.['VELOCIDAD-RUCK'] ?? event.extra_data?.['VELOCIDAD_RUCK'] ?? event.extra_data?.duration ?? event.extra_data?.DURATION ?? 0
+          );
+          const isFast = Number.isFinite(speedVal) && speedVal < 3;
+          return value === 'FAST' ? isFast : !isFast;
+        }
         
         // Filtrado especial para equipos (soporta categorías agregadas)
         if (descriptor === 'TEAM' || descriptor === 'EQUIPO') {
@@ -570,6 +621,58 @@ const ChartsTabs = (_props: any) => {
 
           console.log("🔍 ADVANCE/AVANCE check:", descriptor, "=", eventAdvance, "===", value, "->", matches);
           return matches;
+        }
+
+        // Filtrado para FIELD_ZONE (etiqueta textual de RucksFieldZonesChart)
+        if (descriptor === 'FIELD_ZONE') {
+          const yCandidates = [event.COORDINATE_Y, event.pos_y, event.y, event.extra_data?.COORDINATE_Y, event.extra_data?.pos_y, event.extra_data?.y];
+          let longitudinal: number | null = null;
+          for (const c of yCandidates) {
+            const n = Number(c);
+            if (!Number.isNaN(n)) { longitudinal = -n; break; }
+          }
+          if (longitudinal === null) {
+            const xCandidates = [event.COORDINATE_X, event.pos_x, event.x, event.extra_data?.COORDINATE_X, event.extra_data?.pos_x, event.extra_data?.x];
+            for (const c of xCandidates) {
+              const n = Number(c);
+              if (!Number.isNaN(n)) { longitudinal = n; break; }
+            }
+          }
+          if (longitudinal === null || Number.isNaN(longitudinal)) return false;
+          const zoneLabel = String(value);
+          if (zoneLabel === 'In-goal propio a 22') return longitudinal >= -100 && longitudinal < -78;
+          if (zoneLabel === '22 propia a mitad') return longitudinal >= -78 && longitudinal < -50;
+          if (zoneLabel === 'Mitad a 22 rival') return longitudinal >= -50 && longitudinal < -22;
+          if (zoneLabel === '22 rival a in-goal') return longitudinal >= -22 && longitudinal <= 100;
+          return false;
+        }
+
+        // Filtrado para KICK_TYPE
+        if (descriptor === 'KICK_TYPE') {
+          const kickType = () => {
+            const val = (event as any).KICK_TYPE ?? (event as any).KICK ?? event?.extra_data?.KICK_TYPE ?? event?.extra_data?.['TIPO-PATADA'] ?? event?.extra_data?.PIE;
+            return String(val || '').trim();
+          };
+          return kickType().toUpperCase() === String(value || '').toUpperCase();
+        }
+
+        // Filtrado para CARD_TYPE (derivado)
+        if (descriptor === 'CARD_TYPE') {
+          const deriveCardType = () => {
+            const n = (raw: any) => String(raw || '').toUpperCase();
+            if (n(event['YELLOW-CARD']) === 'TRUE' || n(event?.extra_data?.['YELLOW-CARD']) === 'TRUE') return 'YELLOW';
+            if (n(event['RED-CARD']) === 'TRUE' || n(event?.extra_data?.['RED-CARD']) === 'TRUE') return 'RED';
+            const raw = event.CARD_TYPE ?? event.CARD ?? event.TARJETA ?? event.card_type ?? event.extra_data?.CARD_TYPE ?? event.extra_data?.CARD ?? event.extra_data?.TARJETA ?? event.extra_data?.card_type;
+            const rawStr = n(raw);
+            if (rawStr.includes('RED') || rawStr.includes('ROJA')) return 'RED';
+            if (rawStr.includes('YELLOW') || rawStr.includes('AMAR')) return 'YELLOW';
+            // derivar de penales via AVANCE
+            const adv = n(event.AVANCE ?? event.ADVANCE ?? event.extra_data?.AVANCE ?? event.extra_data?.ADVANCE);
+            if (adv.includes('NEG')) return 'RED';
+            if (adv.includes('NEUT')) return 'YELLOW';
+            return '';
+          };
+          return deriveCardType() === String(value || '').toUpperCase();
         }
 
         // Filtrado especial para origen de tries (TRY_ORIGIN)
@@ -705,17 +808,22 @@ const ChartsTabs = (_props: any) => {
       <div style={{ width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
         <TabsList style={{ display: 'inline-flex', whiteSpace: 'nowrap', boxSizing: 'border-box' }}>
           <TabsTrigger style={{ display: 'inline-flex', flex: '0 0 auto', minWidth: 110 }} value="overview">Resumen</TabsTrigger>
+          <TabsTrigger style={{ display: 'inline-flex', flex: '0 0 auto', minWidth: 110 }} value="possession">Posesión</TabsTrigger>
           <TabsTrigger style={{ display: 'inline-flex', flex: '0 0 auto', minWidth: 110 }} value="tackles">Tackles</TabsTrigger>
           <TabsTrigger style={{ display: 'inline-flex', flex: '0 0 auto', minWidth: 110 }} value="points" disabled={!hasPoints}>Points</TabsTrigger>
           {/* Temporarily always-enable Tries tab for debug/inspection; revert after QA */}
           <TabsTrigger style={{ display: 'inline-flex', flex: '0 0 auto', minWidth: 110 }} value="tries">Tries</TabsTrigger>
-          <TabsTrigger style={{ display: 'inline-flex', flex: '0 0 auto', minWidth: 110 }} value="penalties" disabled={!hasPenalties}>Penalties</TabsTrigger>
+          <TabsTrigger style={{ display: 'inline-flex', flex: '0 0 auto', minWidth: 110 }} value="penalties" disabled={!hasPenalties}>Penales</TabsTrigger>
+          <TabsTrigger style={{ display: 'inline-flex', flex: '0 0 auto', minWidth: 110 }} value="freekicks" disabled={!hasFreeKicks}>Free-kicks</TabsTrigger>
+          <TabsTrigger style={{ display: 'inline-flex', flex: '0 0 auto', minWidth: 110 }} value="cards" disabled={!hasCards}>Tarjetas</TabsTrigger>
           <TabsTrigger style={{ display: 'inline-flex', flex: '0 0 auto', minWidth: 110 }} value="turnovers" disabled={!hasTurnovers}>Turnovers</TabsTrigger>
           <TabsTrigger style={{ display: 'inline-flex', flex: '0 0 auto', minWidth: 110 }} value="setpieces" disabled={!hasSetPieces}>Set Pieces</TabsTrigger>
+          <TabsTrigger style={{ display: 'inline-flex', flex: '0 0 auto', minWidth: 110 }} value="rucks" disabled={!hasRucks}>Rucks</TabsTrigger>
+          <TabsTrigger style={{ display: 'inline-flex', flex: '0 0 auto', minWidth: 110 }} value="mauls" disabled={!hasMauls}>Mauls</TabsTrigger>
           <TabsTrigger style={{ display: 'inline-flex', flex: '0 0 auto', minWidth: 110 }} value="goalkicks" disabled={!hasGoalKicks}>Palos</TabsTrigger>
+          <TabsTrigger style={{ display: 'inline-flex', flex: '0 0 auto', minWidth: 110 }} value="openkicks" disabled={!hasOpenKicks}>Kicks Juego</TabsTrigger>
           <TabsTrigger style={{ display: 'inline-flex', flex: '0 0 auto', minWidth: 110 }} value="linebreaks" disabled={!hasLineBreaks}>Quiebres</TabsTrigger>
-          <TabsTrigger style={{ display: 'inline-flex', flex: '0 0 auto', minWidth: 110 }} value="advances">Avances</TabsTrigger>
-          <TabsTrigger style={{ display: 'inline-flex', flex: '0 0 auto', minWidth: 110 }} value="scatter">Mapa</TabsTrigger>
+          {/* Pestañas desactivadas temporalmente: pases, errores, avances, mapa */}
           {/* Agrega más pestañas según los charts */}
         </TabsList>
       </div>
@@ -757,11 +865,27 @@ const ChartsTabs = (_props: any) => {
       )}
       
 
-          <TabsContent value="overview">
+      <TabsContent value="overview">
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Resumen del partido</h3>
           <p>Eventos totales: {effectiveEvents.length}</p>
           <p>Debug: {JSON.stringify(effectiveEvents.slice(0, 2), null, 2)}</p>
+        </div>
+      </TabsContent>
+
+      <TabsContent value="possession">
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Posesión</h3>
+          {hasPossession ? (
+            <div className="space-y-4">
+              <PossessionShareChart events={events} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
+              {hasRuckPositions && (
+                <RucksFieldZonesChart events={effectiveEvents} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">No hay datos de posesión disponibles</div>
+          )}
         </div>
       </TabsContent>
 
@@ -866,19 +990,6 @@ const ChartsTabs = (_props: any) => {
         </div>
       </TabsContent>
 
-      <TabsContent value="advances">
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Distribución de Avances</h3>
-          {hasAdvancePieChartData(filteredEvents) ? (
-            <AdvancePieChart events={filteredEvents} category="ADVANCE" />
-          ) : (
-            <div className="text-center py-8 text-gray-500">
-              No hay datos de avances disponibles para mostrar
-            </div>
-          )}
-        </div>
-      </TabsContent>
-
       <TabsContent value="points">
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Points</h3>
@@ -948,15 +1059,69 @@ const ChartsTabs = (_props: any) => {
 
       <TabsContent value="penalties">
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Penalties</h3>
+          <h3 className="text-lg font-semibold">Penales</h3>
           {hasPenalties ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <PenaltiesPlayerBarChart events={filteredEvents.filter(e => e.CATEGORY === 'PENALTY' || e.event_type === 'PENALTY')} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
-              <PenaltiesTimeChart events={filteredEvents.filter(e => e.CATEGORY === 'PENALTY' || e.event_type === 'PENALTY')} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
-              <PenaltiesCausePieChart events={filteredEvents.filter(e => e.CATEGORY === 'PENALTY' || e.event_type === 'PENALTY')} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
+              {hasPenaltyPlayers && (
+                <PenaltiesPlayerBarChart
+                  events={penaltyEvents}
+                  category="PENALTY"
+                  title="Penales por Jugador"
+                  tabId="penalties-tab"
+                  onChartClick={(...args:any)=>{handleChartClick(...args);}}
+                />
+              )}
+              <PenaltiesTimeChart
+                events={penaltyEvents}
+                category="PENALTY"
+                title="Penales por Bloque de Tiempo"
+                tabId="penalties-tab"
+                onChartClick={(...args:any)=>{handleChartClick(...args);}}
+              />
+              <InfringementsCauseChart events={penaltyEvents} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
             </div>
           ) : (
-            <div className="text-center py-8 text-gray-500">No hay datos de Penalties para mostrar</div>
+            <div className="text-center py-8 text-gray-500">No hay datos de Penales para mostrar</div>
+          )}
+        </div>
+      </TabsContent>
+
+      <TabsContent value="freekicks">
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Free-kicks</h3>
+          {hasFreeKicks ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {hasFreeKickPlayers && (
+                <PenaltiesPlayerBarChart
+                  events={freeKickEvents}
+                  category="FREE-KICK"
+                  title="Free-kicks por Jugador"
+                  tabId="freekicks-tab"
+                  onChartClick={(...args:any)=>{handleChartClick(...args);}}
+                />
+              )}
+              <PenaltiesTimeChart
+                events={freeKickEvents}
+                category="FREE-KICK"
+                title="Free-kicks por Bloque de Tiempo"
+                tabId="freekicks-tab"
+                onChartClick={(...args:any)=>{handleChartClick(...args);}}
+              />
+              <InfringementsCauseChart events={freeKickEvents} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">No hay datos de Free-kicks para mostrar</div>
+          )}
+        </div>
+      </TabsContent>
+
+      <TabsContent value="cards">
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Tarjetas</h3>
+          {hasCards ? (
+            <CardsSummaryChart events={effectiveEvents} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
+          ) : (
+            <div className="text-center py-8 text-gray-500">No hay datos de Tarjetas para mostrar</div>
           )}
         </div>
       </TabsContent>
@@ -1007,6 +1172,28 @@ const ChartsTabs = (_props: any) => {
         </div>
       </TabsContent>
 
+      <TabsContent value="rucks">
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Rucks</h3>
+          {hasRucks ? (
+            <RucksSpeedPieChart events={effectiveEvents} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
+          ) : (
+            <div className="text-center py-8 text-gray-500">No hay datos de Rucks para mostrar</div>
+          )}
+        </div>
+      </TabsContent>
+
+      <TabsContent value="mauls">
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Mauls</h3>
+          {hasMauls ? (
+            <MaulsOutcomeChart events={effectiveEvents} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
+          ) : (
+            <div className="text-center py-8 text-gray-500">No hay datos de Mauls para mostrar</div>
+          )}
+        </div>
+      </TabsContent>
+
       <TabsContent value="goalkicks">
         <div className="space-y-4">
           {hasGoalKicks ? (
@@ -1038,6 +1225,21 @@ const ChartsTabs = (_props: any) => {
             </div>
           ) : (
             <div className="text-center py-8 text-gray-500">No hay datos de Patadas a los Palos para mostrar</div>
+          )}
+        </div>
+      </TabsContent>
+
+      <TabsContent value="openkicks">
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Patadas en juego abierto</h3>
+          {hasOpenKicks ? (
+            <div className="space-y-4">
+              <OpenPlayKicksTeamPieChart events={effectiveEvents} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
+              <OpenPlayKicksPlayerChart events={effectiveEvents} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
+              <OpenPlayKicksChart events={effectiveEvents} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">No hay datos de patadas en juego abierto</div>
           )}
         </div>
       </TabsContent>
@@ -1095,18 +1297,7 @@ const ChartsTabs = (_props: any) => {
         </div>
       </TabsContent>
 
-      <TabsContent value="scatter">
-        {/* <ScatterChart
-          events={filteredEvents}
-          columnsToTooltip={columnsToTooltip}
-          colors={colors}
-          selectedEvents={[]}
-          setSelectedEvents={() => {}}
-          onEventClick={onEventClick}
-          width={800}
-          height={600}
-        /> */}
-      </TabsContent>
+      {/* Scatter tab desactivada */}
     </Tabs>
   );
 };

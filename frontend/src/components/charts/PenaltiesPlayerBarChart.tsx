@@ -1,8 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Bar } from 'react-chartjs-2';
+import { matchesCategory } from '@/utils/eventUtils';
 
-const PenaltiesPlayerBarChart = ({ events, onChartClick }: any) => {
-  const [chartData, setChartData] = useState(null);
+interface Props {
+  events: any[];
+  category?: string; // 'PENALTY' o 'FREE-KICK'
+  title?: string;
+  tabId?: string;
+  onChartClick: (...args: any[]) => void;
+}
+
+const PenaltiesPlayerBarChart: React.FC<Props> = ({ events, category = 'PENALTY', title = 'Penales por Jugador', tabId = 'penalties-tab', onChartClick }) => {
+  const [chartData, setChartData] = useState<any>(null);
 
   useEffect(() => {
     const getPlayerName = (event: any) => {
@@ -15,47 +24,38 @@ const PenaltiesPlayerBarChart = ({ events, onChartClick }: any) => {
       return event.player_name || event.JUGADOR || event.extra_data?.JUGADOR || event.extra_data?.PLAYER || null;
     };
 
-    const penaltyEvents = events.filter(event => event.CATEGORY === 'PENALTY' || event.event_type === 'PENALTY');
-    const playerLabels = [...new Set(penaltyEvents.map(getPlayerName).filter(p => p !== null))].sort();
+    const penalEvents = events.filter(event => matchesCategory(event, category));
+    const playerLabels = [...new Set(penalEvents.map(getPlayerName).filter(p => p !== null))].sort();
+    if (playerLabels.length === 0) {
+      setChartData(null);
+      return;
+    }
 
     const data = {
       labels: playerLabels,
       datasets: [{
-        label: 'Penalties',
+        label: title,
         data: playerLabels.map(player => 
-          penaltyEvents.filter(event => getPlayerName(event) === player).length
+          penalEvents.filter(event => getPlayerName(event) === player).length
         ),
         backgroundColor: 'rgba(255, 99, 132, 0.6)',
       }],
     };
 
     setChartData(data);
-  }, [events]);
+  }, [events, category, title]);
 
-  const handleChartClick = (event, elements) => {
-    if (!elements || elements.length === 0) return;
+  const handleChartClick = (event: any, elements: any[]) => {
+    if (!elements || elements.length === 0 || !chartData) return;
     const chart = elements[0].element.$context.chart;
     const dataIndex = elements[0].index ?? elements[0].element?.$context?.dataIndex;
     const label = chartData?.labels?.[dataIndex];
 
-    const getPlayerNameForFilter = (event: any) => {
-      if (event.players && Array.isArray(event.players) && event.players.length > 0) {
-        return event.players[0];
-      }
-      if (event.PLAYER) {
-        return Array.isArray(event.PLAYER) ? event.PLAYER[0] : event.PLAYER;
-      }
-      return event.player_name || event.JUGADOR || event.extra_data?.JUGADOR || event.extra_data?.PLAYER || null;
-    };
-
-    const filteredEvents = events.filter(ev => {
-      const playerName = getPlayerNameForFilter(ev);
-      const category = ev.CATEGORY || ev.event_type;
-      return playerName === label && category === 'PENALTY';
-    });
-
-    const additionalFilters = [{ descriptor: 'JUGADOR', value: label }];
-    onChartClick(event, elements, chart, 'player', 'penalties-tab', additionalFilters, filteredEvents);
+    const additionalFilters = [
+      { descriptor: 'JUGADOR', value: label },
+      { descriptor: 'CATEGORY', value: category },
+    ];
+    onChartClick(event, elements, chart, 'player', tabId, additionalFilters);
   };
 
   const horizontal = (chartData?.labels?.length || 0) > 8;
@@ -66,7 +66,7 @@ const PenaltiesPlayerBarChart = ({ events, onChartClick }: any) => {
     maintainAspectRatio: false,
     plugins: {
       legend: { position: 'top' as const },
-      title: { display: true, text: 'Penalties por Jugador' },
+      title: { display: true, text: title },
     },
     scales: {
       x: horizontal ? { beginAtZero: true } : {},
