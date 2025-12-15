@@ -7,7 +7,7 @@ import json
 import openai
 import math
 from db import Base, engine, get_db, SessionLocal
-from models import Club, ImportProfile, Match  # importa solo lo necesario
+from models import Club, ImportProfile, Match, Event  # incluye Event para bulk_update
 from werkzeug.utils import secure_filename
 from importer import import_match_from_excel, import_match_from_json, import_match_from_xml
 from normalizer import normalize_excel_to_json, normalize_xml_to_json
@@ -162,7 +162,46 @@ def write_path(ev, path, value):
 
 
 def apply_mapping_to_events_py(events, mapping):
-    # mapping: list of { source: 'extra_data.AVANCE', target: 'extra_data.ADVANCE', transformer: 'to_upper' }
+    # mapping puede ser:
+    # 1) lista de {source, target, transformer}
+    # 2) dict con secciones code/labels/team_inference (perfiles XML personalizados)
+    if isinstance(mapping, dict) and 'code' in mapping:
+        code_map = mapping.get('code', {})
+        team_inf = mapping.get('team_inference', {})
+        label_map = mapping.get('labels', {})
+        out = []
+        for ev in events:
+            new_ev = dict(ev) if isinstance(ev, dict) else ev
+            if 'extra_data' not in new_ev or new_ev.get('extra_data') is None:
+                new_ev['extra_data'] = {}
+            code = new_ev.get('code') or new_ev.get('CATEGORY') or new_ev.get('event_type')
+            mapped_code = code_map.get(code, code)
+            if mapped_code:
+                new_ev['CATEGORY'] = mapped_code
+                new_ev['event_type'] = mapped_code
+            if code in team_inf and not new_ev.get('TEAM'):
+                new_ev['TEAM'] = team_inf[code]
+                new_ev['extra_data']['TEAM'] = team_inf[code]
+
+            # Mapear labels simples presentes en extra_data
+            ed = new_ev.get('extra_data', {}) or {}
+            for group, target in (label_map or {}).items():
+                val = new_ev.get(group) or ed.get(group)
+                if val is not None:
+                    ed[target] = val
+                    # Sync campos clave
+                    if target.upper() in ['JUGADOR', 'PLAYER'] and not new_ev.get('PLAYER'):
+                        new_ev['PLAYER'] = val
+                    if target.upper() in ['TEAM', 'EQUIPO'] and not new_ev.get('TEAM'):
+                        new_ev['TEAM'] = val
+                    if target.upper() in ['ADVANCE', 'AVANCE'] and not new_ev.get('ADVANCE'):
+                        new_ev['ADVANCE'] = val
+            new_ev['extra_data'] = ed
+            # labels mapping: si vienen en extra_data.descriptors (no fiable), omitir aquí
+            out.append(new_ev)
+        return out
+
+    # mapping: lista de { source: 'extra_data.AVANCE', target: 'extra_data.ADVANCE', transformer: 'to_upper' }
     out_events = []
     for ev in events:
         new_ev = dict(ev) if isinstance(ev, dict) else ev
@@ -173,6 +212,8 @@ def apply_mapping_to_events_py(events, mapping):
             new_ev['extra_data']['descriptors'] = {}
 
         for m in mapping or []:
+            if not isinstance(m, dict):
+                continue
             src = m.get('source')
             tgt = m.get('target')
             transformer = m.get('transformer')
@@ -184,7 +225,6 @@ def apply_mapping_to_events_py(events, mapping):
                 val = val.upper()
             elif transformer == 'split_and_dedupe' and isinstance(val, str):
                 parts = [p.strip() for p in val.split(',') if p.strip()]
-                # if only one element, keep string? keep array
                 val = list(dict.fromkeys(parts))
             elif transformer == 'mmss_to_seconds' and isinstance(val, (str, int, float)):
                 sec = mmss_to_seconds_py(val)
@@ -858,38 +898,18 @@ def save_match():
         if not has_time:
             return jsonify({"error": "Falta mapeo de tiempo (timestamp_sec) en los eventos. Por favor mapea el campo de tiempo en la preview."}), 400
 
-        # Comprehensive validation for critical fields
+        # Validación liviana: solo se exige event_type/CATEGORY y timestamp_sec numérico si viene
         validation_errors = []
         for i, ev in enumerate(evs):
             # Check event_type
             if not ev.get('event_type') and not ev.get('CATEGORY'):
                 validation_errors.append(f"Evento {i+1}: Falta event_type o CATEGORY")
-            
-            # Check ADVANCE (critical for charts)
-            advance = ev.get('extra_data', {}).get('ADVANCE') or ev.get('ADVANCE')
-            if advance is None:
-                validation_errors.append(f"Evento {i+1}: Falta campo ADVANCE (requerido para gráficos)")
-            elif not isinstance(advance, str):
-                validation_errors.append(f"Evento {i+1}: ADVANCE debe ser string, no {type(advance)}")
-            
-            # Check PLAYER
-            player = ev.get('PLAYER')
-            if player is None:
-                validation_errors.append(f"Evento {i+1}: Falta campo PLAYER")
-            elif not isinstance(player, str):
-                validation_errors.append(f"Evento {i+1}: PLAYER debe ser string, no {type(player)}")
-            
-            # Check TEAM
-            team = ev.get('TEAM')
-            if team is None:
-                validation_errors.append(f"Evento {i+1}: Falta campo TEAM")
-            elif not isinstance(team, str):
-                validation_errors.append(f"Evento {i+1}: TEAM debe ser string, no {type(team)}")
-            
+
             # Check timestamp_sec
             timestamp = ev.get('timestamp_sec')
             if timestamp is None:
-                validation_errors.append(f"Evento {i+1}: Falta timestamp_sec")
+                # Se permite null: si no viene, se puede derivar desde Game_Time/clip_start luego
+                pass
             elif not isinstance(timestamp, (int, float)):
                 validation_errors.append(f"Evento {i+1}: timestamp_sec debe ser numérico, no {type(timestamp)}")
 
@@ -899,6 +919,54 @@ def save_match():
         import_match_from_json(data, settings)
         return jsonify({"message": "Importación exitosa"}), 200
     except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        db.close()
+
+
+@app.route("/api/matches/<int:match_id>/events/bulk_update", methods=["POST"])
+def bulk_update_events(match_id: int):
+    """
+    Permite actualizar campos de múltiples eventos sin reimportar el archivo.
+    Espera JSON: {"updates": [ {"id": <event_id>, "fields": { ... } }, ... ]}
+    """
+    payload = request.get_json() or {}
+    updates = payload.get("updates", [])
+    if not isinstance(updates, list) or len(updates) == 0:
+        return jsonify({"error": "Faltan updates"}), 400
+
+    allowed_fields = {"PLAYER", "TEAM", "CATEGORY", "event_type", "ADVANCE", "timestamp_sec", "extra_data"}
+    db = SessionLocal()
+    updated = 0
+    try:
+        for upd in updates:
+            ev_id = upd.get("id")
+            fields = upd.get("fields", {})
+            if ev_id is None or not isinstance(fields, dict):
+                continue
+            ev = db.query(Event).filter_by(id=ev_id, match_id=match_id).first()
+            if not ev:
+                continue
+            for key, val in fields.items():
+                if key not in allowed_fields:
+                    continue
+                if key == "extra_data":
+                    # Merge extra_data dict
+                    if not isinstance(val, dict):
+                        continue
+                    current = ev.extra_data or {}
+                    merged = dict(current)
+                    merged.update(val)
+                    ev.extra_data = merged
+                else:
+                    setattr(ev, key, val)
+            updated += 1
+        db.commit()
+        return jsonify({"message": f"Actualizados {updated} eventos"}), 200
+    except Exception as e:
+        db.rollback()
         import traceback
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500

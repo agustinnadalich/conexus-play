@@ -40,7 +40,8 @@ def import_polisportiva():
         }
     }
     
-    xml_path = "/app/uploads/Polisportiva.xml"
+    # Usar el XML proporcionado en uploads (renombrado a L_aquila.xml)
+    xml_path = "/app/uploads/L_aquila.xml"
     
     # Verificar que existe el archivo
     if not os.path.exists(xml_path):

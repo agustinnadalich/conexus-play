@@ -18,14 +18,11 @@ const zoneRanges = [
 const getLongitudinalCoord = (ev: any): number | null => {
   const candidatesY = [ev.COORDINATE_Y, ev.pos_y, ev.y, ev.extra_data?.COORDINATE_Y, ev.extra_data?.pos_y, ev.extra_data?.y];
   for (const c of candidatesY) {
+    if (c === undefined || c === null || c === "") continue;
     const n = Number(c);
     if (!Number.isNaN(n)) return -n;
   }
-  const candidatesX = [ev.COORDINATE_X, ev.pos_x, ev.x, ev.extra_data?.COORDINATE_X, ev.extra_data?.pos_x, ev.extra_data?.x];
-  for (const c of candidatesX) {
-    const n = Number(c);
-    if (!Number.isNaN(n)) return n;
-  }
+  // Si no hay Y, no inferir desde X para evitar falsos positivos
   return null;
 };
 

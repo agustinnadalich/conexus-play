@@ -8,8 +8,9 @@ const TriesPlayerChart = ({ events, onChartClick }: any) => {
     const getPointType = (event: any) => {
       if (!event) return '';
       if (event.POINTS) return String(event.POINTS).toUpperCase();
+      if (event.PUNTOS) return String(event.PUNTOS).toUpperCase();
       const ed = event.extra_data || {};
-      const candidates = [ed['TIPO-PUNTOS'], ed['TIPO_PUNTOS'], ed['tipo_puntos'], ed['TIPO-PUNTO'], ed['TIPO'], ed['type_of_points'], ed['type']];
+      const candidates = [ed['TIPO-PUNTOS'], ed['TIPO_PUNTOS'], ed['tipo_puntos'], ed['TIPO-PUNTO'], ed['PUNTOS'], ed['TIPO'], ed['type_of_points'], ed['type']];
       for (const c of candidates) {
         if (c !== undefined && c !== null) {
           const s = String(c).trim();

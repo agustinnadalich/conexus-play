@@ -27,7 +27,8 @@ const VideoPlayer = (props: any) => {
   useEffect(() => {
     if (!videoRef.current || !selectedEvent) return;
 
-    const targetTime = resolveEventStart(selectedEvent);
+    // currentTime ya viene ajustado en PlaybackContext; úsalo como prioridad
+    const targetTime = currentTime ?? resolveEventStart(selectedEvent);
     const player: any = videoRef.current;
 
     const seekAndPlay = () => {

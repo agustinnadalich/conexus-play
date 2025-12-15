@@ -84,6 +84,9 @@ const AnalysisPageNeoContent = () => {
             </div>
           </div>
           <div className="neo-actions">
+            <Link className="neo-btn" to={`/analysis/${matchId}/edit-events`}>
+              Editar eventos
+            </Link>
             <Link className="neo-btn" to={`/analysis/${matchId}`}>
               <FiLayers /> Vista clásica
             </Link>

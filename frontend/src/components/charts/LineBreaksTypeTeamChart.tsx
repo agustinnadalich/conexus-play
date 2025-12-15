@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Doughnut } from 'react-chartjs-2';
+import { detectOurTeams, getTeamFromEvent, normalizeString } from '../../utils/teamUtils';
+import { matchesCategory } from '@/utils/eventUtils';
 
 const LineBreaksTypeTeamChart = ({ events, onChartClick, matchInfo }: any) => {
   const [chartData, setChartData] = useState<any>(null);
@@ -7,21 +9,24 @@ const LineBreaksTypeTeamChart = ({ events, onChartClick, matchInfo }: any) => {
   useEffect(() => {
     const getType = (event: any) => {
       return event.extra_data?.['TIPO-QUIEBRE'] || 
+             event.extra_data?.['TIPO DE QUIEBRE'] ||
              event.extra_data?.TIPO_QUIEBRE || 
              event.TIPO_QUIEBRE || 
              'OTROS';
     };
 
     const getTeam = (event: any) => {
-      return event.extra_data?.EQUIPO || event.EQUIPO || '';
+      return getTeamFromEvent(event) || event.extra_data?.EQUIPO || event.EQUIPO || '';
     };
 
-    const teamName = matchInfo?.team_name || 'PESCARA';
+    const detectedTeams = detectOurTeams(events || []);
+    const teamName = matchInfo?.team_name || matchInfo?.TEAM || matchInfo?.team || detectedTeams[0] || '';
+    const teamNameNorm = normalizeString(teamName).toUpperCase();
 
     const breaks = events.filter((e: any) => {
-      const category = e.event_type === 'BREAK' || e.CATEGORY === 'BREAK';
-      const team = getTeam(e).toUpperCase();
-      return category && team === teamName.toUpperCase();
+      const category = matchesCategory(e as any, 'BREAK', ['QUIEBRE']);
+      const team = normalizeString(getTeam(e)).toUpperCase();
+      return category && (teamNameNorm ? team === teamNameNorm : true);
     });
 
     const typeCounts: any = {};
@@ -30,7 +35,9 @@ const LineBreaksTypeTeamChart = ({ events, onChartClick, matchInfo }: any) => {
       typeCounts[type] = (typeCounts[type] || 0) + 1;
     });
 
-    const types = Object.keys(typeCounts).sort((a, b) => typeCounts[b] - typeCounts[a]);
+    const types = Object.keys(typeCounts)
+      .filter(t => normalizeString(t).toUpperCase() !== 'SIN ESPECIFICAR')
+      .sort((a, b) => typeCounts[b] - typeCounts[a]);
     const total = breaks.length;
 
     const colors = [
@@ -61,6 +68,7 @@ const LineBreaksTypeTeamChart = ({ events, onChartClick, matchInfo }: any) => {
 
     const getType = (event: any) => {
       return event.extra_data?.['TIPO-QUIEBRE'] || 
+             event.extra_data?.['TIPO DE QUIEBRE'] ||
              event.extra_data?.TIPO_QUIEBRE || 
              event.TIPO_QUIEBRE || 
              'OTROS';
@@ -68,12 +76,12 @@ const LineBreaksTypeTeamChart = ({ events, onChartClick, matchInfo }: any) => {
 
     const filteredEvents = events.filter((ev: any) => {
       const type = getType(ev);
-      const category = ev.CATEGORY || ev.event_type;
-      return category === 'BREAK' && type === label;
+      return matchesCategory(ev as any, 'BREAK', ['QUIEBRE']) && type === label;
     });
 
     const additionalFilters = [
-      { descriptor: 'TIPO-QUIEBRE', value: label }
+      { descriptor: 'TIPO-QUIEBRE', value: label },
+      { descriptor: 'TIPO DE QUIEBRE', value: label },
     ];
 
     onChartClick(event, elements, chart, 'type', 'linebreaks-tab', additionalFilters, filteredEvents);
@@ -108,11 +116,13 @@ const LineBreaksTypeTeamChart = ({ events, onChartClick, matchInfo }: any) => {
     onClick: handleChartClick,
   };
 
-  return chartData?.data ? (
+  if (!chartData?.data || (chartData.total ?? 0) === 0) return null;
+
+  return (
     <div style={{ height: '400px' }}>
       <Doughnut data={chartData.data} options={chartOptions as any} plugins={[centerTextPlugin]} />
     </div>
-  ) : null;
+  );
 };
 
 export default LineBreaksTypeTeamChart;

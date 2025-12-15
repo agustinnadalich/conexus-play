@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Bar } from 'react-chartjs-2';
+import { matchesCategory } from '@/utils/eventUtils';
 
 const LineBreaksTimeChart = ({ events, onChartClick }: any) => {
   const [chartData, setChartData] = useState(null);
@@ -26,7 +27,7 @@ const LineBreaksTimeChart = ({ events, onChartClick }: any) => {
     };
 
     const breaks = events.filter((e: any) => 
-      e.event_type === 'BREAK' || e.CATEGORY === 'BREAK'
+      matchesCategory(e as any, 'BREAK', ['QUIEBRE'])
     );
 
     const timeGroups: any = {
@@ -84,8 +85,7 @@ const LineBreaksTimeChart = ({ events, onChartClick }: any) => {
 
     const filteredEvents = events.filter((ev: any) => {
       const evTimeGroup = getGameTime(ev);
-      const category = ev.CATEGORY || ev.event_type;
-      return category === 'BREAK' && evTimeGroup === timeGroup;
+      return matchesCategory(ev as any, 'BREAK', ['QUIEBRE']) && evTimeGroup === timeGroup;
     });
 
     const additionalFilters = [

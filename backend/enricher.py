@@ -579,6 +579,9 @@ def calculate_game_time_from_zero(events, match_info=None, profile=None):
         # Aplicar delay al timestamp antes de calcular Game_Time
         if delay_to_apply != 0:
             timestamp += delay_to_apply
+            event_dict.setdefault('extra_data', {})['_delay_applied'] = delay_to_apply
+        else:
+            event_dict.setdefault('extra_data', {})['_delay_applied'] = 0
 
         # Detectar período con timestamp ajustado
         detected_period = 1

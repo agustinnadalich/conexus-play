@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Doughnut } from 'react-chartjs-2';
+import { matchesCategory } from '@/utils/eventUtils';
 
 const LineBreaksResultChart = ({ events, onChartClick }: any) => {
   const [chartData, setChartData] = useState<any>(null);
@@ -14,7 +15,7 @@ const LineBreaksResultChart = ({ events, onChartClick }: any) => {
     };
 
     const breaks = events.filter((e: any) => 
-      e.event_type === 'BREAK' || e.CATEGORY === 'BREAK'
+      matchesCategory(e as any, 'BREAK', ['QUIEBRE'])
     );
 
     const resultCounts: any = {};
@@ -76,9 +77,7 @@ const LineBreaksResultChart = ({ events, onChartClick }: any) => {
     // Filtrar eventos por resultado (considerando simplificación de nombres)
     const filteredEvents = events.filter((ev: any) => {
       const result = getResult(ev);
-      const category = ev.CATEGORY || ev.event_type;
-      
-      if (category !== 'BREAK') return false;
+      if (!matchesCategory(ev as any, 'BREAK', ['QUIEBRE'])) return false;
       
       // Mapear label simplificado a resultado real
       if (label === 'TURNOVER' && result.startsWith('TURNOVER_')) return true;

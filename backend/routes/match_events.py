@@ -317,12 +317,24 @@ def get_match_events_deprecated(match_id):
                 else:
                     print(f"⚠️ Perfil '{match.import_profile_name}' no encontrado, usando perfil por defecto")
             
-            # Si no hay perfil específico, usar el perfil por defecto
-            if profile is None:
-                default_profile = db.query(ImportProfile).filter_by(name='Default').first()
-                if default_profile:
-                    profile = default_profile.settings
-        
+        # Si no hay perfil específico, usar el perfil por defecto
+        if profile is None:
+            default_profile = db.query(ImportProfile).filter_by(name='Default').first()
+            if default_profile:
+                profile = default_profile.settings
+
+        # Inyectar los delays definidos en el match dentro del perfil activo (aunque no sea manual)
+        # para que el enricher los aplique siempre.
+        if profile is not None:
+            profile = profile.copy()  # evitar mutar el objeto original de la DB
+            time_mapping = profile.get('time_mapping', {})
+            delays = time_mapping.get('delays', {})
+            # merge: prioridad a los valores guardados en el partido
+            delays['global_delay_seconds'] = match.global_delay_seconds or delays.get('global_delay_seconds', 0) or 0
+            delays['event_delays'] = match.event_delays or delays.get('event_delays', {}) or {}
+            time_mapping['delays'] = delays
+            profile['time_mapping'] = time_mapping
+
         # Usar el enricher para calcular tiempos correctamente
         if profile is not None:
             enriched_events = enrich_events(event_dicts, match_info, profile)
@@ -337,6 +349,27 @@ def get_match_events_deprecated(match_id):
             final_data = event_dicts
         else:
             print("⚠️ No se encontró perfil, usando cálculo manual legacy")
+            # Aplicar delays básicos en modo legacy (sin enricher)
+            global_delay = match.global_delay_seconds or 0
+            event_delays = match.event_delays or {}
+            if global_delay != 0 or event_delays:
+                adjusted = []
+                for ev in event_dicts:
+                    evt_type = (ev.get("event_type") or ev.get("CATEGORY") or "").upper()
+                    delay_to_apply = global_delay + (event_delays.get(evt_type, 0) or 0)
+                    if delay_to_apply:
+                        try:
+                            if ev.get("timestamp_sec") is not None:
+                                ev["timestamp_sec"] = float(ev["timestamp_sec"]) + delay_to_apply
+                            if ev.get("SECOND") is not None:
+                                ev["SECOND"] = float(ev["SECOND"]) + delay_to_apply
+                            ed = ev.get("extra_data") or {}
+                            ed["_delay_applied"] = (ed.get("_delay_applied") or 0) + delay_to_apply
+                            ev["extra_data"] = ed
+                        except Exception as e:
+                            print(f"⚠️ No se pudo aplicar delay a evento {ev.get('id')}: {e}")
+                    adjusted.append(ev)
+                event_dicts = adjusted
 
         # CREA EL DATAFRAME ANTES DE USARLO
         df = pd.DataFrame(event_dicts)
@@ -398,6 +431,32 @@ def get_match_events_deprecated(match_id):
             print(f"DEBUG: final_data antes de calcular origen: {len(final_data)} eventos")
             final_data = calcular_origen_tries_xml(final_data)
             print(f"DEBUG: final_data después de calcular origen: {len(final_data)} eventos")
+
+        # Asegurar que los delays del match se apliquen a los timestamps finales (sin duplicar)
+        global_delay = match.global_delay_seconds or 0
+        event_delays = match.event_delays or {}
+        if global_delay != 0 or event_delays:
+            for ev in final_data:
+                try:
+                    already_applied = ev.get('extra_data', {}).get('_delay_applied') or 0
+                    evt_type = (ev.get("event_type") or ev.get("CATEGORY") or "").upper()
+                    delay_to_apply = global_delay + (event_delays.get(evt_type, 0) or 0)
+                    # Solo aplicar la parte no aplicada aún para evitar duplicados
+                    pending_delay = delay_to_apply - already_applied
+                    if abs(pending_delay) > 1e-6:
+                        if ev.get("timestamp_sec") is not None:
+                            ev["timestamp_sec"] = float(ev["timestamp_sec"]) + pending_delay
+                        if ev.get("SECOND") is not None:
+                            ev["SECOND"] = float(ev["SECOND"]) + pending_delay
+                        ev.setdefault('extra_data', {})['_delay_applied'] = already_applied + pending_delay
+                        # Actualizar TIME(VIDEO) para mantener consistencia con el delay aplicado
+                        try:
+                            mins, secs = divmod(int(ev["timestamp_sec"]), 60)
+                            ev['TIME(VIDEO)'] = f"{mins:02}:{secs:02}"
+                        except Exception:
+                            pass
+                except Exception as e:
+                    print(f"⚠️ No se pudo aplicar delay final a evento {ev.get('id')}: {e}")
 
         # Si se usó el enricher, mover Game_Time/Time_Group/TIME(VIDEO) de extra_data al nivel superior
         print(f"DEBUG: profile is not None: {profile is not None}, final_data length: {len(final_data)}")

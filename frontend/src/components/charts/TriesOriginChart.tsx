@@ -32,7 +32,7 @@ const TriesOriginChart = ({ events, onChartClick }) => {
     if (!event) return '';
     if (event.POINTS) return String(event.POINTS).toUpperCase();
     const ed = event.extra_data || {};
-    const candidates = [ed['TIPO-PUNTOS'], ed['TIPO_PUNTOS'], ed['tipo_puntos'], ed['TIPO-PUNTO'], ed['TIPO'], ed['type_of_points'], ed['type']];
+    const candidates = [ed['TIPO-PUNTOS'], ed['TIPO_PUNTOS'], ed['tipo_puntos'], ed['TIPO-PUNTO'], ed['PUNTOS'], ed['TIPO'], ed['type_of_points'], ed['type']];
     for (const c of candidates) {
       if (c !== undefined && c !== null) {
         const s = String(c).trim();
@@ -94,7 +94,7 @@ const TriesOriginChart = ({ events, onChartClick }) => {
       const fieldSector = tryEvent.extra_data?.MISC || tryEvent.MISC;
 
       // Team puede estar en minúscula o mayúscula
-      const team = (tryEvent.TEAM || tryEvent.team || '').toString().toUpperCase();
+      const team = (tryEvent.TEAM || tryEvent.team || tryEvent.EQUIPO || tryEvent.extra_data?.EQUIPO || tryEvent.extra_data?.TEAM || '').toString().toUpperCase();
 
       // Phase count (tryEvent.extra_data?.TRY_PHASES puede ser string o número)
       const rawPhases = tryEvent.extra_data?.TRY_PHASES ?? tryEvent.TRY_PHASES ?? null;

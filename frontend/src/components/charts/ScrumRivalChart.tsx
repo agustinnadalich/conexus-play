@@ -6,7 +6,11 @@ ChartJS.register(ArcElement, Tooltip, Legend);
 
 const ScrumRivalChart = ({ events, onChartClick }) => {
   const getResult = (event: any) => {
-    return event.extra_data?.SCRUM || event.SCRUM || event.SCRUM_RESULT;
+    const raw = event.extra_data?.SCRUM || event.SCRUM || event.SCRUM_RESULT || '';
+    const s = String(raw).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+    if (s.includes('GAN') || s.includes('WIN')) return 'WIN';
+    if (s.includes('PERD') || s.includes('LOSE') || s.includes('LOST')) return 'LOSE';
+    return '';
   };
   
   const isOpponent = (event: any) => {
@@ -26,16 +30,8 @@ const ScrumRivalChart = ({ events, onChartClick }) => {
   // Solo eventos del rival
   const rivalEvents = events.filter(event => isOpponent(event));
   
-  const won = rivalEvents.filter(event => {
-    const result = getResult(event);
-    return result && String(result).toUpperCase().includes('WIN');
-  }).length;
-  
-  const lost = rivalEvents.filter(event => {
-    const result = getResult(event);
-    return result && (String(result).toUpperCase().includes('LOST') || String(result).toUpperCase().includes('LOSE'));
-  }).length;
-  
+  const won = rivalEvents.filter(event => getResult(event) === 'WIN').length;
+  const lost = rivalEvents.filter(event => getResult(event) === 'LOSE').length;
   const total = won + lost;
   const effectiveness = total > 0 ? ((won / total) * 100).toFixed(1) : 0;
 

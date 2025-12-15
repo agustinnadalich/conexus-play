@@ -1,13 +1,18 @@
 import React from 'react';
 import { Doughnut } from 'react-chartjs-2';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
+import { isOpponentEvent } from '@/utils/eventUtils';
 
 const PointsTypeChart = ({ events, onChartClick }) => {
   const getPointType = (ev:any) => {
     // Normalizar múltiples posibles keys que contienen el tipo de punto
     const candidates = [
+      ev?.POINTS,
+      ev?.PUNTOS,
+      ev?.extra_data?.POINTS,
       ev?.extra_data?.['TIPO-PUNTOS'],
       ev?.extra_data?.TIPO_PUNTOS,
+      ev?.extra_data?.PUNTOS,
       ev?.TIPO_PUNTOS,
       ev?.['TIPO-PUNTOS'],
       ev?.MISC,
@@ -25,53 +30,44 @@ const PointsTypeChart = ({ events, onChartClick }) => {
     return null;
   };
 
-  const pointTypes = [...new Set(events.map(event => String(getPointType(event) ?? '').trim()).filter(p => p && p !== 'null' && p !== 'undefined'))];
+  // Consider only actual POINTS events to avoid counting GOAL-KICK duplicates
+  const pointsEvents = events.filter((event:any) => {
+    const cat = String(event?.CATEGORY ?? event?.event_type ?? '').toUpperCase();
+    return cat === 'POINTS';
+  });
+
+  const pointTypes = [...new Set(pointsEvents.map(event => String(getPointType(event) ?? '').trim()).filter(p => p && p !== 'null' && p !== 'undefined'))];
 
   const getPointsValue = (ev:any) => {
-    // Prefer numeric fields if present, otherwise infer from point type
-    const numericCandidates = [ev?.["POINTS(VALUE)"], ev?.["POINTS_VALUE"], ev?.["POINTS VALUE"], ev?.["POINTS"], ev?.extra_data?.points, ev?.extra_data?.POINTS];
-    for (const c of numericCandidates) {
-      if (c === undefined || c === null) continue;
-      const num = Number(c);
-      if (Number.isFinite(num)) return num;
-    }
-
     const type = String(getPointType(ev) ?? '').toUpperCase();
-    if (!type) return 0;
     if (type.includes('TRY')) return 5;
-    if (type.includes('CONVERSION')) return 2;
-    if (type.includes('PENALTY')) return 3;
+    if (type.includes('CONVERSION') || type.includes('CONVERT')) return 2;
+    if (type.includes('PENALTY') || type.includes('PENAL')) return 3;
     if (type.includes('DROP')) return 3;
+    if (!type) {
+      const numericCandidates = [ev?.["POINTS(VALUE)"], ev?.["POINTS_VALUE"], ev?.["POINTS VALUE"], ev?.["POINTS"], ev?.PUNTOS, ev?.extra_data?.points, ev?.extra_data?.POINTS, ev?.extra_data?.PUNTOS];
+      for (const c of numericCandidates) {
+        if (c === undefined || c === null) continue;
+        const num = Number(c);
+        if (Number.isFinite(num)) return num;
+      }
+    }
     return 0;
   };
 
   const isOpponent = (ev:any) => {
-    // Heurística robusta para detectar si el evento pertenece al oponente.
-    // Revisa banderas explícitas primero, luego intenta reconocer por texto en campos TEAM/EQUIPO.
     try {
+      if (isOpponentEvent(ev)) return true;
+
       const ed = ev.extra_data || {};
-      // 1) flags explícitas booleanas o strings
-      if (ev.IS_OPPONENT === true) return true;
-      if (ev.IS_OPPONENT === 'true' || ev.IS_OPPONENT === 'True') return true;
-      if (ed.IS_OPPONENT === true) return true;
-      if (typeof ed.IS_OPPONENT === 'string' && ed.IS_OPPONENT.toLowerCase() === 'true') return true;
-      // 2) campo OPPONENT explícito (puede ser string/boolean)
-      if (ed.OPPONENT === true) return true;
-      if (typeof ed.OPPONENT === 'string' && /^(yes|true|1|y|si)$/i.test(ed.OPPONENT)) return true;
-
-      // 3) TEAM/EQUIPO text heuristics
-      const team = (ev.TEAM ?? ev.EQUIPO ?? ed.EQUIPO ?? ed.TEAM ?? '').toString().trim();
+      const teamRaw = ev.team ?? ev.TEAM ?? ev.EQUIPO ?? ed.EQUIPO ?? ed.TEAM ?? '';
+      const team = String(teamRaw || '').trim().toUpperCase();
       if (!team) return false;
-      const u = team.toUpperCase();
-      if (/\b(OPP|OPPONENT|AWAY|RIVAL|RIVALES|VISITA|VISITANTE|OPPONENTS|RIVAL_TEAM|AWAY_TEAM)\b/i.test(u)) return true;
+      if (/\b(OPP|OPPONENT|RIVAL|VISITA|VISITANTE|AWAY|RIVALES|OPPONENTS|RIVAL_TEAM|AWAY_TEAM)\b/i.test(team)) return true;
 
-      // 4) numeric ids: sometimes '1' and '2' used; if extra_data contains home/away ids, try to infer
       if (ed.home_team !== undefined && ed.away_team !== undefined) {
         const teamId = Number(team);
-        if (!Number.isNaN(teamId)) {
-          // if teamId equals away_team, it's opponent
-          if (Number(ed.away_team) === teamId) return true;
-        }
+        if (!Number.isNaN(teamId) && Number(ed.away_team) === teamId) return true;
       }
     } catch (e) {
       // ignore and default to false
@@ -79,8 +75,8 @@ const PointsTypeChart = ({ events, onChartClick }) => {
     return false;
   };
 
-  const teamPointsByType = pointTypes.map(type => events.filter(event => String(getPointType(event) ?? '').toUpperCase() === String(type).toUpperCase() && !isOpponent(event)).reduce((sum, ev) => sum + getPointsValue(ev), 0));
-  const rivalPointsByType = pointTypes.map(type => events.filter(event => String(getPointType(event) ?? '').toUpperCase() === String(type).toUpperCase() && isOpponent(event)).reduce((sum, ev) => sum + getPointsValue(ev), 0));
+  const teamPointsByType = pointTypes.map(type => pointsEvents.filter(event => String(getPointType(event) ?? '').toUpperCase() === String(type).toUpperCase() && !isOpponent(event)).reduce((sum, ev) => sum + getPointsValue(ev), 0));
+  const rivalPointsByType = pointTypes.map(type => pointsEvents.filter(event => String(getPointType(event) ?? '').toUpperCase() === String(type).toUpperCase() && isOpponent(event)).reduce((sum, ev) => sum + getPointsValue(ev), 0));
 
   const filteredPointTypes = pointTypes.filter((_, index) => teamPointsByType[index] > 0 || rivalPointsByType[index] > 0);
 
@@ -159,8 +155,11 @@ const PointsTypeChart = ({ events, onChartClick }) => {
     }
     const label = chart.data.labels[el.index ?? el.element?.index ?? el.element?.$context?.dataIndex ?? el.element?.$context?.dataIndex];
     const type = label.includes(' (Our Team)') ? label.replace(' (Our Team)', '') : label.replace(' (Opponent)', '');      
-    // Use the actual key used by the backend/extra_data to filter correctly
-    onChartClick(event, elements, chart, "points_type", "points-tab", [{ descriptor: "TIPO-PUNTOS", value: type }]);
+    // Enviar filtros para ambas variantes de campo (TIPO-PUNTOS / PUNTOS) para abarcar ambos orígenes
+    onChartClick(event, elements, chart, "points_type", "points-tab", [
+      { descriptor: "TIPO-PUNTOS", value: type },
+      { descriptor: "PUNTOS", value: type },
+    ]);
   };
 
   const pieChartOptions = {

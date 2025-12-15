@@ -31,6 +31,26 @@ const MatchReportLeft = ({ data }) => {
     };
   };
 
+  const formatSeconds = (seconds: number) => {
+    const safe = Number(seconds) || 0;
+    const mins = Math.floor(safe / 60);
+    const secs = Math.round(safe % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const getEffectiveGameTime = () => {
+    if (!data || !data.length) {
+      return { our: 0, opp: 0, total: 0 };
+    }
+    const isAttackOrDefense = (event: any) => {
+      const cat = String(event?.CATEGORY ?? '').toUpperCase();
+      return cat === 'ATTACK' || cat === 'DEFENSE';
+    };
+    const our = data.filter(ev => isAttackOrDefense(ev) && ev.TEAM !== 'OPPONENT').reduce((sum, ev) => sum + (ev.DURATION || 0), 0);
+    const opp = data.filter(ev => isAttackOrDefense(ev) && ev.TEAM === 'OPPONENT').reduce((sum, ev) => sum + (ev.DURATION || 0), 0);
+    return { our, opp, total: our + opp };
+  };
+
   const getDataForPali = () => {
     if (!data || !data.length) return { labels: ['GOAL-KICK'], datasets: [{ label: 'Our Team', data: [0], isRival: false }, { label: 'Opponent', data: [0], isRival: true }] };
 
@@ -133,6 +153,7 @@ const MatchReportLeft = ({ data }) => {
   const patadasPalosData = getDataForPali();
   const posesionData = getDataForPosesion();
   const tacklesData = getDataForTackles();
+  const effectiveTime = getEffectiveGameTime();
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -167,6 +188,9 @@ const MatchReportLeft = ({ data }) => {
       <div style={{ width: '100%', marginBottom: '5px', textAlign: 'center' }}>
         <h4 style={{ margin: "0px" }}>Possession</h4>
         <HorizontalBarChart data={posesionData} />
+        <div style={{ fontSize: '0.9rem', marginTop: '4px' }}>
+          Effective game time: <strong>{formatSeconds(effectiveTime.total)}</strong> (Our team: {formatSeconds(effectiveTime.our)} · Opponent: {formatSeconds(effectiveTime.opp)})
+        </div>
       </div>
       <div style={{ width: '100%', marginBottom: '5px', textAlign: 'center' }}>
         <h4 style={{ margin: "0px" }}>Tackles</h4>

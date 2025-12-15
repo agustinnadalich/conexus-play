@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Bar } from 'react-chartjs-2';
+import { detectOurTeams, getTeamFromEvent, normalizeString } from '../../utils/teamUtils';
+import { matchesCategory } from '@/utils/eventUtils';
 
 const LineBreaksPlayerChart = ({ events, onChartClick, matchInfo }: any) => {
   const [chartData, setChartData] = useState(null);
@@ -16,15 +18,21 @@ const LineBreaksPlayerChart = ({ events, onChartClick, matchInfo }: any) => {
     };
 
     const getTeam = (event: any) => {
-      return event.extra_data?.EQUIPO || event.EQUIPO || '';
+      return getTeamFromEvent(event) || event.extra_data?.EQUIPO || event.EQUIPO || '';
     };
 
-    const teamName = matchInfo?.team_name || 'PESCARA';
+    const detectedTeams = detectOurTeams(events || []);
+    const teamName = matchInfo?.team_name || matchInfo?.TEAM || matchInfo?.team || detectedTeams[0] || '';
+    const teamNameNorm = normalizeString(teamName).toUpperCase();
 
     const breaks = events.filter((e: any) => {
-      const category = e.event_type === 'BREAK' || e.CATEGORY === 'BREAK';
-      const team = getTeam(e).toUpperCase();
-      return category && team === teamName.toUpperCase();
+      const category = matchesCategory(e as any, 'BREAK', ['QUIEBRE']);
+      const team = normalizeString(getTeam(e)).toUpperCase();
+      if (!category) return false;
+      if (!teamNameNorm) return category;
+      // Si no hay team informado, asumir nuestro
+      if (!team) return true;
+      return team === teamNameNorm;
     });
 
     const playerCounts: any = {};

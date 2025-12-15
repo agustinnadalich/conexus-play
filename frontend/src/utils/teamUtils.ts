@@ -3,8 +3,9 @@ export function getTeamFromEvent(ev: any): string | undefined {
   if (!ev) return undefined;
   const tryFields = [
     'TEAM', 'team', 'Team',
+    'EQUIPO', 'equipo',
     'OPPONENT', 'opponent', 'Opponent',
-    'team_name', 'opponent_name', 'home', 'away', 'teamName'
+    'team_name', 'opponent_name', 'home', 'away', 'teamName', 'TEAM_NAME'
   ];
 
   for (const f of tryFields) {
@@ -41,40 +42,18 @@ export function getTeamNamesFromEvents(events: any[]): string[] {
 }
 
 export function detectOurTeams(events: any[]): string[] {
-  // Heurística: detectar equipos "propios" basándose en:
-  // 1. Más eventos de tipo ofensivo/táctico
-  // 2. Más tackles exitosos
-  // 3. Más eventos en general (asumiendo más actividad propia)
-  
-  const teamStats = new Map<string, { total: number, tackles: number, successful: number }>();
-  
+  // Heurística: priorizar el equipo más frecuente que NO sea rival/opponent.
+  const teamStats = new Map<string, number>();
   (events || []).forEach(ev => {
     const team = getTeamFromEvent(ev);
     if (!team) return;
-    
-    if (!teamStats.has(team)) {
-      teamStats.set(team, { total: 0, tackles: 0, successful: 0 });
-    }
-    
-    const stats = teamStats.get(team)!;
-    stats.total++;
-    
-    // Contar tackles
-    if (ev.event_type === 'TACKLE' || ev.CATEGORY === 'TACKLE') {
-      stats.tackles++;
-      if (ev.event_type === 'TACKLE' || ev.CATEGORY === 'TACKLE') {
-        stats.successful++;
-      }
-    }
+    const u = normalizeString(team).toUpperCase();
+    if (/\b(OPPONENT|RIVAL|VISITA|AWAY|OPP)\b/.test(u)) return; // saltar rivales
+    teamStats.set(team, (teamStats.get(team) || 0) + 1);
   });
-  
-  // Ordenar por actividad total (más eventos = más probable que sea equipo propio)
-  const sortedTeams = Array.from(teamStats.entries())
-    .sort((a, b) => b[1].total - a[1].total)
-    .map(([team]) => team);
-  
-  // Retornar el equipo más activo como "nuestro equipo"
-  return sortedTeams.length > 0 ? [sortedTeams[0]] : [];
+  if (teamStats.size === 0) return [];
+  const sorted = Array.from(teamStats.entries()).sort((a,b)=>b[1]-a[1]);
+  return [sorted[0][0]];
 }
 
 export function isOurTeam(teamName: string, ourTeamsList: string[]): boolean {

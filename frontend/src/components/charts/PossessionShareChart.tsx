@@ -9,47 +9,51 @@ interface Props {
 
 const PossessionShareChart: React.FC<Props> = ({ events, onChartClick }) => {
   const [chartData, setChartData] = useState<any>(null);
+  const [totals, setTotals] = useState<{ our: number; opp: number; total: number }>({ our: 0, opp: 0, total: 0 });
 
   useEffect(() => {
-    const isPossessionEvt = (ev: any) =>
-      matchesCategory(ev, 'POSSESSION', ['POSESION', 'POSSESSION_START', 'POSSESSION-END', 'ATTACK', 'DEFENSE', 'DEFENSA', 'ATAQUE']);
+    const isAttack = (ev: any) => matchesCategory(ev, 'ATTACK', ['ATTACK', 'ATAQUE']);
+    const isDefense = (ev: any) => matchesCategory(ev, 'DEFENSE', ['DEFENSE', 'DEFENSA']);
 
-    const possessionEvents = events.filter(isPossessionEvt);
+    const possessionEvents = events.filter(ev => isAttack(ev) || isDefense(ev));
     let ourSeconds = 0;
     let oppSeconds = 0;
 
-    if (possessionEvents.length > 0) {
-      possessionEvents.forEach((ev) => {
-        const duration =
-          Number(
-            pickValue(ev, ['DURATION', 'duration', 'POSESION_DURACION', 'POSSESSION_DURATION', 'POSESION', 'SECONDS']) ||
-              ev?.extra_data?.DURATION ||
-              0
-          ) || 0;
-        const isDefense = matchesCategory(ev, 'DEFENSE', ['DEFENSA']);
-        const isAttack = matchesCategory(ev, 'ATTACK', ['ATAQUE']);
-        if (isOpponentEvent(ev) || isDefense) oppSeconds += Math.max(duration, 1);
-        else if (isAttack) ourSeconds += Math.max(duration, 1);
-        else ourSeconds += Math.max(duration, 1);
-      });
-    } else {
-      // Fallback: usar el total de eventos como proxy de posesión (cuando no hay marcadores explícitos)
-      events.forEach((ev) => {
-        if (isOpponentEvent(ev)) oppSeconds += 1;
-        else ourSeconds += 1;
-      });
-    }
+    possessionEvents.forEach((ev) => {
+      const raw =
+        pickValue(ev, ['DURATION', 'duration', 'POSESION_DURACION', 'POSSESSION_DURATION', 'POSESION', 'SECONDS']) ??
+        ev?.extra_data?.DURATION;
+      let duration = Number(raw);
+      if (!Number.isFinite(duration) || duration <= 0) {
+        const clipEnd = Number(ev?.extra_data?.clip_end);
+        const clipStart = Number(ev?.extra_data?.clip_start);
+        if (Number.isFinite(clipEnd) && Number.isFinite(clipStart) && clipEnd > clipStart) {
+          duration = clipEnd - clipStart;
+        }
+      }
+      if (!Number.isFinite(duration) || duration < 0) duration = 0;
 
-    if (ourSeconds + oppSeconds === 0) {
+      if (isDefense(ev) || isOpponentEvent(ev)) oppSeconds += duration;
+      else if (isAttack(ev)) ourSeconds += duration;
+    });
+
+    const total = ourSeconds + oppSeconds;
+    if (total === 0) {
       setChartData(null);
+      setTotals({ our: 0, opp: 0, total: 0 });
       return;
     }
+
+    setTotals({ our: ourSeconds, opp: oppSeconds, total });
+
+    const ourPerc = Number(((ourSeconds / total) * 100).toFixed(1));
+    const oppPerc = Number(((oppSeconds / total) * 100).toFixed(1));
 
     setChartData({
       labels: ['Con posesión (nosotros)', 'Con posesión (rival)'],
       datasets: [
         {
-          data: [ourSeconds, oppSeconds],
+          data: [ourPerc, oppPerc],
           backgroundColor: ['rgba(59, 130, 246, 0.8)', 'rgba(248, 113, 113, 0.8)'],
         },
       ],
@@ -66,19 +70,31 @@ const PossessionShareChart: React.FC<Props> = ({ events, onChartClick }) => {
     onChartClick(event, elements, chart, 'possession', 'possession-tab', filters);
   };
 
-  if (!chartData) return <div>No data for PossessionShareChart</div>;
+    if (!chartData) return <div className="text-center text-gray-500">No hay datos de ATTACK/DEFENSE para calcular posesión</div>;
+
+  const formatSeconds = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.round(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   return (
-    <div className="h-72">
+    <div className="h-72 space-y-2">
       <Doughnut
         data={chartData}
         options={{
           responsive: true,
           maintainAspectRatio: false,
-          plugins: { title: { display: true, text: 'Posesión (proxy por eventos/duración)' } },
+          plugins: { 
+            title: { display: true, text: 'Posesión (duración de ATTACK/DEFENSE)' },
+            tooltip: { callbacks: { label: (ctx: any) => `${ctx.label}: ${ctx.raw}%` } },
+          },
           onClick: handleClick,
         }}
       />
+      <div className="text-sm text-center text-gray-600">
+        Tiempo efectivo jugado: <strong>{formatSeconds(totals.total)}</strong> (Nosotros: {formatSeconds(totals.our)} · Rival: {formatSeconds(totals.opp)})
+      </div>
     </div>
   );
 };

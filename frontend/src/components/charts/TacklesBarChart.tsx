@@ -77,7 +77,13 @@ export default function TacklesBarChart({ events, onBarClick }: Props) {
   // Filtrar valores vacíos, null o placeholders como 'Unknown'/'Desconocido'
   players = players.filter(player => player && typeof player === 'string' && player.trim() !== '' && !/^(unknown|desconocido)$/i.test(player.trim()));
 
-  const advance = event.ADVANCE || event.advance_type || event.extra_data?.AVANCE || 'UNKNOWN';
+  const advanceRaw = event.ADVANCE || event.advance_type || event.extra_data?.AVANCE || 'UNKNOWN';
+  const advNorm = String(advanceRaw).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
+  // Mapear variantes en español/inglés a los tres buckets esperados
+  let advance: 'NEGATIVE' | 'NEUTRAL' | 'POSITIVE' | 'UNKNOWN' = 'UNKNOWN';
+  if (advNorm.startsWith('NEG')) advance = 'NEGATIVE';
+  else if (advNorm.startsWith('NEU')) advance = 'NEUTRAL';
+  else if (advNorm.startsWith('POS')) advance = 'POSITIVE';
 
     players.forEach((player) => {
       // Solo procesar si hay un jugador válido (no vacío, no null, no undefined)

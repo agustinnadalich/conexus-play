@@ -11,7 +11,7 @@ const TriesPhasesChart = ({ events, onChartClick }: any) => {
     }
 
     const tries = events.filter((e: any) => {
-      const pt = (e.POINTS || e.extra_data?.['TIPO-PUNTOS'] || e.extra_data?.['TIPO_PUNTOS'] || e.POINTS) || '';
+      const pt = (e.POINTS || e.PUNTOS || e.extra_data?.['TIPO-PUNTOS'] || e.extra_data?.['TIPO_PUNTOS'] || e.extra_data?.PUNTOS || e.POINTS) || '';
       const s = String(pt).toUpperCase();
       return s.includes('TRY');
     });
@@ -77,7 +77,7 @@ const TriesPhasesChart = ({ events, onChartClick }: any) => {
     }
   };
 
-  if (!chartData) return <div>No data for TriesPhasesChart</div>;
+    if (!chartData) return <div>No data for TriesPhasesChart</div>;
 
   return (
     <div style={{ minHeight: 220 }}>

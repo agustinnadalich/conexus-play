@@ -10,6 +10,7 @@ import MatchesAdmin from "@/pages/MatchesAdmin";
 import CreateProfile from "@/pages/CreateProfile";
 import MappingsAdmin from "@/pages/MappingsAdmin";
 import MultiMatchReportPage from "./pages/MultiMatchReportPage";
+import EventEditor from "./pages/EventEditor";
 
 function App() {
   return (
@@ -25,6 +26,7 @@ function App() {
         <Route path="/import" element={<ImportMatch />} />
         <Route path="/preview" element={<PreviewImport />} />
         <Route path="/create-profile" element={<CreateProfile />} />
+        <Route path="/analysis/:matchId/edit-events" element={<EventEditor />} />
       </Routes>
   );
 }

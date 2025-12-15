@@ -5,7 +5,7 @@ import re
 import os
 from datetime import datetime
 import tempfile
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Any
 from translator import Translator
 
 
@@ -789,8 +789,118 @@ def normalize_xml_to_json(filepath, profile, discard_categories=None, translator
         print(f"🔍 Procesados {processed_control} eventos de control")
 
         # Procesar eventos de juego
+        def clean_event_type_and_team(raw_code: str):
+            """
+            Normaliza tipos de evento que traen sufijo 'RIVAL' y detecta equipo.
+            - Si el código contiene 'RIVAL', se elimina esa palabra y se marca team_hint='OPPONENT'.
+            - Palos/PALOS RIVAL se mapean siempre a GOAL-KICK.
+            - PUNTOS/PUNTO se mapean a POINTS.
+            - QUIEBRE/QUIEBRE RIVAL se mapean a BREAK.
+            """
+            team_hint = None
+            code = (raw_code or "").strip()
+            upper = code.upper()
+            if "RIVAL" in upper:
+                team_hint = "OPPONENT"
+                code = upper.replace("RIVAL", "").replace("  ", " ").strip()
+            # Normalizar palos a GOAL-KICK
+            if code.upper() in ["PALOS", "PALOS RIVAL"]:
+                code = "GOAL-KICK"
+            # Normalizar quiebre a BREAK
+            if code.upper().startswith("QUIEBRE"):
+                code = "BREAK"
+            if code.upper().startswith("PUNT"):
+                code = "POINTS"
+            return code, team_hint
+
+        def derive_goal_kick_result(descriptors: dict):
+            """
+            Intenta derivar RESULTADO-PALOS desde varios campos (incluido MISC sin grupo).
+            Retorna 'SUCCESS', 'FAIL' o None.
+            """
+            def collect(val):
+                if val is None:
+                    return []
+                if isinstance(val, list):
+                    out = []
+                    for v in val:
+                        out.extend(collect(v))
+                    return out
+                return [str(val)]
+
+            candidates = []
+            for key in ['RESULTADO-PALOS', 'RESULTADO_PALOS', 'RESULTADO', 'MISC']:
+                candidates.extend(collect(descriptors.get(key)))
+            for c in candidates:
+                uc = str(c or "").upper()
+                if "CONVERTIDA" in uc or "SUCCESS" in uc:
+                    return "SUCCESS"
+                if "ERRADA" in uc or "FAIL" in uc:
+                    return "FAIL"
+            return None
+
+        def derive_points_type(descriptors: dict):
+            """
+            Deriva el tipo de puntos desde múltiples claves y etiquetas sueltas.
+            Ej: 'P TRY', 'CONVERSION', 'P PENAL' -> se devuelve el string tal cual.
+            """
+            def collect(val):
+                if val is None:
+                    return []
+                if isinstance(val, list):
+                    out = []
+                    for v in val:
+                        out.extend(collect(v))
+                    return out
+                return [str(val)]
+
+            candidates = []
+            for key in ['PUNTOS', 'POINTS', 'TIPO-PUNTOS', 'TIPO_PUNTOS', 'tipo_puntos', 'TIPO-PUNTO', 'MISC']:
+                candidates.extend(collect(descriptors.get(key)))
+            for c in candidates:
+                s = str(c or "").strip()
+                if not s:
+                    continue
+                u = s.upper()
+                # Mapear variantes comunes
+                if u in ["P TRY", "PTRY", "TRY"]:
+                    return "TRY"
+                if u in ["P PENAL", "PPENAL", "P PENALTY", "PENAL", "PENALTY-KICK", "PENALTY KICK"]:
+                    return "PENALTY-KICK"
+                if "CONVERSION" in u or "CONVERT" in u:
+                    return "CONVERSION"
+                if u == "DROP" or "DROP" in u:
+                    return "DROP"
+                # PALOS pertenece a eventos GOAL-KICK; no debe generar puntos para evitar duplicados
+                return s
+            return None
+
+        def guess_team_from_tokens(tokens: List[Any]) -> Optional[str]:
+            """
+            Dada una lista de tokens (strings), intenta encontrar un nombre de equipo.
+            Regresa 'OPPONENT' si ve RIVAL/OPPONENT/OPP/etc, de lo contrario el primer
+            token alfabético suficientemente largo que no parezca código corto (T1B, DC, etc).
+            """
+            for tok in tokens:
+                if tok is None:
+                    continue
+                s = str(tok).strip()
+                if not s:
+                    continue
+                u = s.upper()
+                if u in ["RIVAL", "OPPONENT", "OPP", "RIVALES", "OPONENTE", "VISITA", "VISITANTE", "AWAY"]:
+                    return "OPPONENT"
+                # evitar códigos cortos tipo sector
+                if re.fullmatch(r'[A-Z0-9]{1,4}', u) and not u.replace(" ", ""):
+                    continue
+                # nombres con espacios o más de 3 letras se aceptan como equipo
+                if len(u) >= 3 and re.search(r'[A-Z]{3,}', u):
+                    return s
+            return None
+
         for i, inst, start, end in game_events:
-            event_type = inst.findtext("code")
+            raw_code = inst.findtext("code")
+            event_type, team_hint = clean_event_type_and_team(raw_code)
             print(f"🔍 Procesando evento de juego {i+1}: {event_type}")
 
             # Filtrar categorías descartadas
@@ -862,15 +972,87 @@ def normalize_xml_to_json(filepath, profile, discard_categories=None, translator
             
             game_time_str = seconds_to_game_time(timestamp, period, time_offsets)
             
+            # Determinar equipo (prioridad: hint por RIVAL en código, luego descriptor EQUIPO/TEAM/MISC)
+            def resolve_team():
+                # Hint de código
+                if team_hint == "OPPONENT":
+                    return "OPPONENT"
+                eq_candidates = []
+                for key in ['EQUIPO', 'TEAM', 'SIDE']:
+                    val = descriptors.get(key)
+                    if val is None:
+                        continue
+                    if isinstance(val, list):
+                        eq_candidates.extend(val)
+                    else:
+                        eq_candidates.append(val)
+                # Si no hay EQUIPO explícito, intentar inferir desde MISC cuando es un texto simple
+                misc = descriptors.get('MISC')
+                if misc is not None:
+                    if isinstance(misc, list):
+                        eq_candidates.extend(misc)
+                    else:
+                        eq_candidates.append(misc)
+
+                guessed = guess_team_from_tokens(eq_candidates)
+                if guessed:
+                    return guessed
+                return None
+
+            # Derivar resultado de palos si aplica
+            if event_type.upper() == "GOAL-KICK":
+                res = derive_goal_kick_result(descriptors)
+                if res:
+                    descriptors['RESULTADO-PALOS'] = res
+
+            # Derivar tipo y valor de puntos si aplica
+            event_points_type = None
+            event_points_value = None
+            if event_type.upper() == "POINTS":
+                pt = derive_points_type(descriptors)
+                if pt:
+                    event_points_type = pt
+                    # Guardar tipo de puntos en todas las variantes que usan los charts
+                    descriptors['POINTS'] = pt
+                    descriptors['TIPO-PUNTOS'] = descriptors.get('TIPO-PUNTOS') or pt
+                    descriptors['TIPO_PUNTOS'] = descriptors.get('TIPO_PUNTOS') or pt
+
+                    # Calcular valor numérico estándar
+                    upper_pt = str(pt).upper()
+                    if upper_pt == "TRY":
+                        event_points_value = 5
+                    elif upper_pt == "CONVERSION":
+                        event_points_value = 2
+                    elif upper_pt in ["PENALTY-KICK", "DROP", "DROP-GOAL"]:
+                        event_points_value = 3
+                    else:
+                        event_points_value = None
+
+                    # Propagar valor numérico a extra_data para consumo de charts
+                    if event_points_value is not None:
+                        descriptors['POINTS(VALUE)'] = event_points_value
+
+            team_val = resolve_team()
+            # Si solo viene hint en el código (ej: "PALOS RIVAL") y no hay descriptor, usarlo
+            if not team_val and team_hint:
+                team_val = team_hint
+            # Propagar equipo a descriptors para que esté disponible en extra_data
+            if team_val and not descriptors.get('EQUIPO'):
+                descriptors['EQUIPO'] = team_val
+            if team_val and not descriptors.get('TEAM'):
+                descriptors['TEAM'] = team_val
+
             event = {
                 "event_type": event_type,
                 "timestamp_sec": round(timestamp, 1),
                 "Game_Time": game_time_str,
                 "game_time": game_time_str,
+                "POINTS": event_points_type,
+                "POINTS(VALUE)": event_points_value,
                 "players": None,
                 "x": x,
                 "y": y,
-                "team": "OPPONENT" if descriptors.get('EQUIPO') == "RIVAL" else descriptors.get('EQUIPO'),
+                "team": team_val,
                 "period": period,
                 "TURNOVER_TYPE": turnover_type,
                 "INFRACTION_TYPE": infraction_type,
@@ -965,5 +1147,3 @@ def parse_discard_categories(discard_string):
             categories.append(cat)
     
     return categories
-
-

@@ -13,8 +13,9 @@ export const useEvents = (matchId: number) => {
         const eventsJson = await eventsRes.json();
         console.log("📦 Eventos obtenidos:", eventsJson.events?.length || 0, "eventos");
 
-        // Obtener información del match (opcional)
-        let matchJson = {};
+        // Obtener información del match (opcional) y mergear con la incluida en events
+        let matchJson: any = {};
+        let matchDetails: any = {};
         try {
           const matchRes = await fetch(`http://localhost:5001/api/matches/${matchId}/info`);
           if (matchRes.ok) {
@@ -24,11 +25,28 @@ export const useEvents = (matchId: number) => {
         } catch (matchError) {
           console.warn("⚠️ No se pudo obtener info del match:", matchError);
         }
+        // Intentar obtener los delays y demás campos desde /matches/:id (incluye global_delay_seconds)
+        try {
+          const detailRes = await fetch(`http://localhost:5001/api/matches/${matchId}`);
+          if (detailRes.ok) {
+            matchDetails = await detailRes.json();
+            console.log("📦 Detalle del match obtenido (incluye delays)");
+          }
+        } catch (detailError) {
+          console.warn("⚠️ No se pudo obtener detalle del match:", detailError);
+        }
+
+        // Combine match_info returned by events endpoint (que incluye delays) con la de /info
+        const combinedMatchInfo = {
+          ...(eventsJson.match_info || {}),
+          ...(matchJson || {}),
+          ...(matchDetails || {}),
+        };
 
         // Transformar la respuesta del backend al formato esperado por el frontend
         const formattedData = {
           events: Array.isArray(eventsJson.events) ? eventsJson.events : [],
-          match_info: matchJson
+          match_info: combinedMatchInfo
         };
 
         console.log("📦 Datos formateados - eventos:", formattedData.events.length);
@@ -41,6 +59,4 @@ export const useEvents = (matchId: number) => {
     enabled: !!matchId,
   });
 };
-
-
 

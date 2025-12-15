@@ -24,7 +24,10 @@ const PenaltiesPlayerBarChart: React.FC<Props> = ({ events, category = 'PENALTY'
       return event.player_name || event.JUGADOR || event.extra_data?.JUGADOR || event.extra_data?.PLAYER || null;
     };
 
-    const penalEvents = events.filter(event => matchesCategory(event, category));
+    const aliases = category === 'FREE-KICK'
+      ? ['FREE KICK', 'FREEKICK', 'FREE-KICK RIVAL', 'FREE KICK RIVAL', 'FREEKICK RIVAL']
+      : [];
+    const penalEvents = events.filter(event => matchesCategory(event, category, aliases));
     const playerLabels = [...new Set(penalEvents.map(getPlayerName).filter(p => p !== null))].sort();
     if (playerLabels.length === 0) {
       setChartData(null);

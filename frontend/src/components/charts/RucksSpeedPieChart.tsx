@@ -17,7 +17,7 @@ const RucksSpeedPieChart: React.FC<Props> = ({ events, onChartClick }) => {
   useEffect(() => {
     const isRuck = (ev: any) => matchesCategory(ev, 'RUCK', ['RUCKS', 'RACK', 'RUK']);
     const speedKey = (ev: any) =>
-      pickValue(ev, ['RUCK_SPEED', 'ruck_speed', 'VELOCIDAD-RUCK', 'VELOCIDAD_RUCK', 'VEL_RUCK', 'SPEED', 'speed', 'DURATION', 'duration']);
+      pickValue(ev, ['RUCK_SPEED', 'ruck_speed', 'VELOCIDAD-RUCK', 'VELOCIDAD_RUCK', 'VEL_RUCK', 'SPEED', 'speed', 'DURATION', 'duration', 'RUCK']);
 
     const ruckEvents = events.filter(isRuck);
     if (ruckEvents.length === 0) {
@@ -31,8 +31,11 @@ const RucksSpeedPieChart: React.FC<Props> = ({ events, onChartClick }) => {
     const countBuckets = (list: any[]) => {
       let fast = 0, slow = 0;
       list.forEach(ev => {
-        const speed = Number(speedKey(ev) ?? 0);
-        if (Number.isFinite(speed) && speed < 3) fast += 1;
+        const raw = speedKey(ev);
+        const rawStr = String(raw ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+        const speedNum = Number(raw);
+        const isFast = (Number.isFinite(speedNum) && speedNum < 3) || rawStr.includes('RAPID') || rawStr.includes('FAST');
+        if (isFast) fast += 1;
         else slow += 1;
       });
       return { fast, slow };

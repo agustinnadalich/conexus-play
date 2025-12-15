@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Bar } from 'react-chartjs-2';
+import { matchesCategory, isOpponentEvent } from '@/utils/eventUtils';
+import { getTeamFromEvent, detectOurTeams, normalizeString } from '../../utils/teamUtils';
 
 const GoalKicksPlayerChart = ({ events, onChartClick, matchInfo }: any) => {
   const [chartData, setChartData] = useState(null);
@@ -16,29 +18,56 @@ const GoalKicksPlayerChart = ({ events, onChartClick, matchInfo }: any) => {
     };
 
     const getResult = (event: any) => {
-      const result = event.extra_data?.['RESULTADO-PALOS'] || 
-                    event.extra_data?.RESULTADO_PALOS || 
-                    event.RESULTADO_PALOS ||
-                    'UNKNOWN';
-      return String(result).toUpperCase();
+      const collect = (val: any): string[] => {
+        if (val === undefined || val === null) return [];
+        if (Array.isArray(val)) return val.flatMap(collect);
+        return [String(val)];
+      };
+      const candidates = [
+        ...collect(event.extra_data?.['RESULTADO-PALOS']),
+        ...collect(event.extra_data?.RESULTADO_PALOS),
+        ...collect(event.RESULTADO_PALOS),
+        ...collect(event.extra_data?.['RESULTADO']),
+        ...collect(event.MISC),
+      ];
+      for (const c of candidates) {
+        const r = String(c || '').toUpperCase();
+        if (r.includes('CONVERTIDA') || r.includes('SUCCESS')) return 'SUCCESS';
+        if (r.includes('ERRADA') || r.includes('FAIL')) return 'FAIL';
+      }
+      return 'FAIL';
     };
 
-    const getTeam = (event: any) => {
-      return event.extra_data?.EQUIPO || event.EQUIPO || '';
+    const simplify = (s: string) => s.replace(/\(.*?\)/g, '').trim().toUpperCase();
+    const detectSide = (event: any): 'OUR' | 'OPP' => {
+      const cat = String(event.event_type || event.CATEGORY || '').toUpperCase();
+      if (cat === 'PALOS') return 'OUR';
+      if (cat === 'PALOS RIVAL') return 'OPP';
+      if (isOpponentEvent(event)) return 'OPP';
+      const rawTeam = normalizeString(getTeamFromEvent(event) || event.extra_data?.EQUIPO || event.EQUIPO || '');
+      const t = simplify(rawTeam);
+      if (t.includes('OPPONENT') || t.includes('RIVAL')) return 'OPP';
+      if (teamNameNorm) {
+        const tn = simplify(teamNameNorm);
+        if (t && t === tn) return 'OUR';
+      }
+      return 'OUR';
     };
 
-    const teamName = matchInfo?.team_name || 'PESCARA';
+    const detected = detectOurTeams(events || []);
+    const teamName = matchInfo?.team_name || matchInfo?.TEAM || matchInfo?.team || detected[0] || '';
+    const teamNameNorm = normalizeString(teamName).toUpperCase();
 
     const goalKicks = events.filter((e: any) => {
-      const category = e.event_type === 'GOAL-KICK' || e.CATEGORY === 'GOAL-KICK';
-      const team = getTeam(e).toUpperCase();
-      return category && team === teamName.toUpperCase();
+      const category = matchesCategory(e as any, 'GOAL-KICK', ['PALOS', 'PALOS RIVAL']);
+      return category && detectSide(e) === 'OUR';
     });
 
     const playerStats: any = {};
     goalKicks.forEach((event: any) => {
       const player = getPlayerName(event);
       const result = getResult(event);
+      if (!result) return; // ignorar intentos sin resultado identificado
       
       if (!playerStats[player]) {
         playerStats[player] = { success: 0, fail: 0 };
@@ -52,6 +81,10 @@ const GoalKicksPlayerChart = ({ events, onChartClick, matchInfo }: any) => {
     });
 
     const players = Object.keys(playerStats).sort();
+    if (players.length === 0) {
+      setChartData(null);
+      return;
+    }
 
     const data = {
       labels: players,
@@ -101,8 +134,7 @@ const GoalKicksPlayerChart = ({ events, onChartClick, matchInfo }: any) => {
     const filteredEvents = events.filter((ev: any) => {
       const playerName = getPlayerNameForFilter(ev);
       const result = getResult(ev);
-      const category = ev.CATEGORY || ev.event_type;
-      return category === 'GOAL-KICK' && 
+      return matchesCategory(ev as any, 'GOAL-KICK', ['PALOS', 'PALOS RIVAL']) && 
              playerName === label && 
              (isSuccess ? result === 'SUCCESS' : result === 'FAIL');
     });

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Bar } from 'react-chartjs-2';
+import { isOpponentEvent } from '@/utils/eventUtils';
 
 const PointsTimeChart = ({ events, onChartClick }) => {
   const [pointsTimeChartData, setPointsTimeChartData] = useState(null);
@@ -60,26 +61,41 @@ const PointsTimeChart = ({ events, onChartClick }) => {
     };
 
     const getPointType = (ev:any) => {
-      return ev?.extra_data?.['TIPO-PUNTOS'] ?? ev?.extra_data?.TIPO_PUNTOS ?? ev?.TIPO_PUNTOS ?? ev?.['TIPO-PUNTOS'] ?? ev?.MISC ?? null;
+      return ev?.POINTS
+        ?? ev?.PUNTOS
+        ?? ev?.extra_data?.POINTS
+        ?? ev?.extra_data?.PUNTOS
+        ?? ev?.extra_data?.['TIPO-PUNTOS']
+        ?? ev?.extra_data?.TIPO_PUNTOS
+        ?? ev?.TIPO_PUNTOS
+        ?? ev?.['TIPO-PUNTOS']
+        ?? ev?.MISC
+        ?? null;
     };
 
     const getPointsValue = (ev:any) => {
       const type = String(getPointType(ev) ?? '').toUpperCase();
       if (!type) return 0;
       if (type.includes('TRY')) return 5;
-      if (type.includes('CONVERSION')) return 2;
-      if (type.includes('PENALTY')) return 3;
+      if (type.includes('CONVERSION') || type.includes('CONVERT')) return 2;
+      if (type.includes('PENALTY') || type.includes('PENAL')) return 3;
       if (type.includes('DROP')) return 3;
-      const v = ev?.["POINTS(VALUE)"] ?? ev?.["POINTS_VALUE"] ?? ev?.["POINTS VALUE"] ?? ev?.["POINTS"] ?? 0;
+      const v = ev?.["POINTS(VALUE)"] ?? ev?.["POINTS_VALUE"] ?? ev?.["POINTS VALUE"] ?? ev?.["POINTS"] ?? ev?.PUNTOS ?? ev?.extra_data?.PUNTOS ?? 0;
       const num = Number(v);
       return Number.isFinite(num) ? num : 0;
     };
 
     // helper to determine team ownership (try multiple fields)
     const isOpponent = (ev:any) => {
-      const team = (ev.TEAM ?? ev.EQUIPO ?? ev.extra_data?.EQUIPO ?? ev.extra_data?.TEAM ?? '').toString().toUpperCase();
-      if (!team) return false;
-      return /OPPONENT|RIVAL|RIVALES|AWAY|OPPONENTS|RIVAL_TEAM|OPP/i.test(team);
+      try {
+        if (isOpponentEvent(ev)) return true;
+        const ed = ev.extra_data || {};
+        const team = (ev.team ?? ev.TEAM ?? ev.EQUIPO ?? ed.EQUIPO ?? ed.TEAM ?? '').toString().toUpperCase();
+        if (!team) return false;
+        return /OPPONENT|RIVAL|RIVALES|VISITA|AWAY|OPPONENTS|RIVAL_TEAM|OPP/i.test(team);
+      } catch (_e) {
+        return false;
+      }
     };
 
     const teamDataset = timeGroups.map(group => {

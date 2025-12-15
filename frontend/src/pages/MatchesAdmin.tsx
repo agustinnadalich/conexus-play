@@ -616,7 +616,7 @@ const MatchesAdmin = () => {
                 </div>
             </div>
 
-            <div className="flex gap-2 mt-6">
+            <div className="flex gap-2 mt-6 flex-wrap">
                 <Button onClick={handleSave}>Guardar Partido</Button>
                 {timeMethod === "manual" && (
                     <Button onClick={handleSaveProfileSettings} variant="outline">
@@ -624,6 +624,11 @@ const MatchesAdmin = () => {
                     </Button>
                 )}
                 <Button variant="secondary" onClick={handleCancel}>Cancelar</Button>
+                {editingMatch && (
+                    <Button variant="secondary" onClick={() => navigate(`/analysis/${editingMatch.id}/edit-events`)}>
+                        Editar eventos
+                    </Button>
+                )}
             </div>
         </CardContent>
         </Card>

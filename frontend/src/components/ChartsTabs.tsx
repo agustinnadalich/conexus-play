@@ -51,12 +51,39 @@ import RucksSpeedPieChart from "./charts/RucksSpeedPieChart";
 import OpenPlayKicksTeamPieChart from "./charts/OpenPlayKicksTeamPieChart";
 import OpenPlayKicksPlayerChart from "./charts/OpenPlayKicksPlayerChart";
 import RucksFieldZonesChart from "./charts/RucksFieldZonesChart";
+import ScrumDetailTable from "./charts/ScrumDetailTable";
+import LineoutDetailTable from "./charts/LineoutDetailTable";
+import ScrumDetailCharts from "./charts/ScrumDetailCharts";
+import LineoutDetailCharts from "./charts/LineoutDetailCharts";
 // import TimelineChart from "./charts/TimelineChart";
 // import ScatterChart from "./charts/ScatterChart";
 // Aquí luego podrás importar los otros charts
 import { useFilterContext } from "../context/FilterContext";
 import { getTeamFromEvent, normalizeString, isOurTeam, computeTackleStatsAggregated, detectOurTeams } from "../utils/teamUtils";
 import { matchesCategory, isOpponentEvent as isOpponent } from "../utils/eventUtils";
+import { MatchEvent } from "@/types";
+
+const isCat = (ev: any, aliases: string[]) => {
+  const cat = (ev.CATEGORY || ev.event_type || ev.code || "").toString().toUpperCase();
+  return aliases.some(a => cat === a.toUpperCase());
+};
+
+const isPoints = (ev: any) => isCat(ev, ['POINTS', 'PUNTOS', 'TRY']);
+const isTries = (ev: any) => {
+  const cat = (ev.CATEGORY || ev.event_type || ev.code || "").toString().toUpperCase();
+  if (cat === 'TRY') return true;
+  if (!isCat(ev, ['POINTS', 'PUNTOS'])) return false;
+  const pt = String(ev.POINTS || ev.PUNTOS || ev.extra_data?.['TIPO-PUNTOS'] || ev.extra_data?.PUNTOS || ev.extra_data?.MISC || "").toUpperCase();
+  return pt.includes('TRY');
+};
+const isPenalties = (ev: any) => isCat(ev, ['PENALTY', 'PENAL']);
+const isFreeKicks = (ev: any) => isCat(ev, ['FREE-KICK', 'FREEKICK', 'FREE KICK', 'FREE-KICK RIVAL', 'FREE KICK RIVAL', 'FREEKICK RIVAL']);
+const isGoalKick = (ev: any) => isCat(ev, ['GOAL-KICK', 'PALOS', 'PALOS RIVAL']);
+const isLineBreak = (ev: any) => isCat(ev, ['BREAK', 'QUIEBRE']);
+const isLineout = (ev: any) => isCat(ev, ['LINEOUT', 'LINE', 'LINEOUT RIVAL']);
+const isScrum = (ev: any) => isCat(ev, ['SCRUM', 'SCRUM RIVAL']);
+const isKickOpen = (ev: any) => isCat(ev, ['KICK', 'PIE']);
+const isRuck = (ev: any) => isCat(ev, ['RUCK', 'RUCK RIVAL']);
 
 const getPlayerNameGeneric = (event: any): string | null => {
   if (event?.players && Array.isArray(event.players) && event.players.length > 0) return event.players[0];
@@ -67,8 +94,6 @@ const getPlayerNameGeneric = (event: any): string | null => {
   const s = String(candidate).trim();
   return s.length ? s : null;
 };
-import type { MatchEvent } from "@/types";
-
 
 const ChartsTabs = (_props: any) => {
   const {
@@ -97,8 +122,9 @@ const ChartsTabs = (_props: any) => {
       const getPointType = (event: any) => {
         if (!event) return '';
         if (event.POINTS) return String(event.POINTS).toUpperCase();
+        if (event.PUNTOS) return String(event.PUNTOS).toUpperCase();
         const ed = event.extra_data || {};
-        const candidates = [ed['TIPO-PUNTOS'], ed['TIPO_PUNTOS'], ed['tipo_puntos'], ed['TIPO-PUNTO'], ed['TIPO'], ed['type_of_points'], ed['type']];
+        const candidates = [ed['TIPO-PUNTOS'], ed['TIPO_PUNTOS'], ed['tipo_puntos'], ed['TIPO-PUNTO'], ed['PUNTOS'], ed['TIPO'], ed['type_of_points'], ed['type']];
         for (const c of candidates) {
           if (c !== undefined && c !== null) {
             const s = String(c).trim();
@@ -227,25 +253,28 @@ const ChartsTabs = (_props: any) => {
 
 
 
-  console.log("🔍 ChartsTabs - Total events:", filteredEvents?.length || 0);
-  console.log("🔍 ChartsTabs - Tackle events:", filteredEvents?.filter(e => e.event_type === 'TACKLE').length || 0);
+  // Debug reducido
+  // console.log("🔍 ChartsTabs - Total events:", filteredEvents?.length || 0);
+  // console.log("🔍 ChartsTabs - Tackle events:", filteredEvents?.filter(e => e.event_type === 'TACKLE').length || 0);
 
   // Quick booleans for presence of data in new tabs
   // Use filteredEvents when available, otherwise fallback to original events so tabs can be enabled during debug
   const eventsForPresence = (filteredEvents && filteredEvents.length > 0) ? filteredEvents : (events || []);
-  const hasPoints = (eventsForPresence || []).some((event) => event.CATEGORY === "POINTS" || event.event_type === "POINTS");
+  const hasPoints = (eventsForPresence || []).some((event) => isPoints(event));
 
   const extractPointType = (event: any) => {
     // Prefer top-level POINTS, then check common extra_data keys
     if (!event) return '';
     const candidates = [] as any[];
     if (event.POINTS !== undefined && event.POINTS !== null) candidates.push(event.POINTS);
+    if (event.PUNTOS !== undefined && event.PUNTOS !== null) candidates.push(event.PUNTOS);
     const ed = event.extra_data || {};
     // possible backend keys
     candidates.push(ed['TIPO-PUNTOS']);
     candidates.push(ed['TIPO_PUNTOS']);
     candidates.push(ed['tipo_puntos']);
     candidates.push(ed['TIPO-PUNTO']);
+    candidates.push(ed['PUNTOS']);
     candidates.push(ed['type_of_points']);
     candidates.push(ed['type']);
     // Flatten and normalize
@@ -258,31 +287,28 @@ const ChartsTabs = (_props: any) => {
     return '';
   };
 
-  const hasTries = (eventsForPresence || []).some((event) => {
-    if (!(event.CATEGORY === 'POINTS' || event.event_type === 'POINTS')) return false;
-    const pt = extractPointType(event);
-    // accept 'TRY' or strings that include TRY
-    return pt === 'TRY' || pt.includes('TRY');
-  });
+  const hasTries = (eventsForPresence || []).some((event) => isTries(event));
   const triesOriginStatus = getTriesOriginStatus(eventsForPresence || []);
   const hasOriginData = triesOriginStatus === 'calculated';
-  const hasPenalties = (eventsForPresence || []).some((event) => matchesCategory(event, 'PENALTY', ['PENAL']));
-  const hasFreeKicks = (eventsForPresence || []).some((event) => matchesCategory(event, 'FREE-KICK', ['FREEKICK', 'FREE KICK']));
+  const hasPenalties = (eventsForPresence || []).some((event) => isPenalties(event));
+  const hasFreeKicks = (eventsForPresence || []).some((event) => isFreeKicks(event));
   const hasTurnovers = (filteredEvents || []).some((event) => event.CATEGORY === "TURNOVER+" || event.CATEGORY === "TURNOVER-" || event.event_type === "TURNOVER+" || event.event_type === "TURNOVER-");
-  const hasSetPieces = (filteredEvents || []).some((event) => event.CATEGORY === "SCRUM" || event.CATEGORY === "LINEOUT" || event.event_type === "SCRUM" || event.event_type === "LINEOUT");
-  const hasGoalKicks = (filteredEvents || []).some((event) => event.CATEGORY === "GOAL-KICK" || event.event_type === "GOAL-KICK");
-  const hasLineBreaks = (filteredEvents || []).some((event) => event.CATEGORY === "BREAK" || event.event_type === "BREAK");
+  const hasSetPieces = (filteredEvents || []).some((event) => isScrum(event) || isLineout(event));
+  const hasScrumDetails = (filteredEvents || []).some((event) => isScrum(event));
+  const hasLineoutDetails = (filteredEvents || []).some((event) => isLineout(event));
+  const hasGoalKicks = (filteredEvents || []).some((event) => isGoalKick(event));
+  const hasLineBreaks = (filteredEvents || []).some((event) => isLineBreak(event));
   const hasCards = (eventsForPresence || []).some((event) => matchesCategory(event, 'CARD', ['TARJETA', 'YELLOW-CARD', 'RED-CARD']) || (matchesCategory(event, 'PENALTY', ['PENAL']) && (String(event.AVANCE ?? event.ADVANCE ?? event.extra_data?.AVANCE ?? event.extra_data?.ADVANCE ?? '').trim() !== '')));
   const hasPasses = false; // ocultado por ahora
   const hasErrors = false; // ocultado por ahora
   const hasAdvances = false; // ocultado por ahora
   const hasScatter = false; // ocultado por ahora
-  const hasRucks = (eventsForPresence || []).some((event) => matchesCategory(event, 'RUCK', ['RUCKS', 'RACK', 'RUK']));
+  const hasRucks = (eventsForPresence || []).some((event) => isRuck(event));
   const hasMauls = (eventsForPresence || []).some((event) => matchesCategory(event, 'MAUL', ['MAULS', 'MAULL']));
-  const hasOpenKicks = (eventsForPresence || []).some((event) => matchesCategory(event, 'KICK', ['PATADA', 'KICK-OPEN', 'OPEN-PLAY-KICK']) && !matchesCategory(event,'GOAL-KICK',['CONVERSION','PENAL','PENALTY','DROP GOAL']));
+  const hasOpenKicks = (eventsForPresence || []).some((event) => isKickOpen(event) && !isGoalKick(event));
   const hasPossession = (events || []).some((event) => matchesCategory(event, 'POSSESSION', ['POSESION', 'ATTACK', 'DEFENSE', 'POSSESSION_START']));
-  const penaltyEvents = filteredEvents.filter(e => matchesCategory(e, 'PENALTY', ['PENAL']));
-  const freeKickEvents = filteredEvents.filter(e => matchesCategory(e, 'FREE-KICK', ['FREEKICK', 'FREE KICK']));
+  const penaltyEvents = filteredEvents.filter(e => isPenalties(e));
+  const freeKickEvents = filteredEvents.filter(e => isFreeKicks(e));
   const hasPenaltyPlayers = penaltyEvents.some(e => getPlayerNameGeneric(e));
   const hasFreeKickPlayers = freeKickEvents.some(e => getPlayerNameGeneric(e));
   const hasRuckPositions = filteredEvents.some(e => matchesCategory(e,'RUCK',['RUCKS','RACK','RUK']) && (e.pos_x !== undefined || e.x !== undefined || e.COORDINATE_X !== undefined || e.extra_data?.pos_x !== undefined || e.extra_data?.x !== undefined));
@@ -800,7 +826,7 @@ const ChartsTabs = (_props: any) => {
   // Debug info moved out of JSX
   try {
     // eslint-disable-next-line no-console
-    console.log('ChartsTabs - Points tab - hasPoints=', hasPoints, 'points events=', filteredEvents.filter(e => e.CATEGORY === 'POINTS' || e.event_type === 'POINTS').length);
+    // console.log('ChartsTabs - Points tab - hasPoints=', hasPoints, 'points events=', filteredEvents.filter(e => e.CATEGORY === 'POINTS' || e.event_type === 'POINTS').length);
   } catch (err) {}
 
   return (
@@ -818,6 +844,8 @@ const ChartsTabs = (_props: any) => {
           <TabsTrigger style={{ display: 'inline-flex', flex: '0 0 auto', minWidth: 110 }} value="cards" disabled={!hasCards}>Tarjetas</TabsTrigger>
           <TabsTrigger style={{ display: 'inline-flex', flex: '0 0 auto', minWidth: 110 }} value="turnovers" disabled={!hasTurnovers}>Turnovers</TabsTrigger>
           <TabsTrigger style={{ display: 'inline-flex', flex: '0 0 auto', minWidth: 110 }} value="setpieces" disabled={!hasSetPieces}>Set Pieces</TabsTrigger>
+          <TabsTrigger style={{ display: 'inline-flex', flex: '0 0 auto', minWidth: 140 }} value="scrums-detail" disabled={!hasScrumDetails}>Scrums Detalle</TabsTrigger>
+          <TabsTrigger style={{ display: 'inline-flex', flex: '0 0 auto', minWidth: 150 }} value="lineouts-detail" disabled={!hasLineoutDetails}>Lineouts Detalle</TabsTrigger>
           <TabsTrigger style={{ display: 'inline-flex', flex: '0 0 auto', minWidth: 110 }} value="rucks" disabled={!hasRucks}>Rucks</TabsTrigger>
           <TabsTrigger style={{ display: 'inline-flex', flex: '0 0 auto', minWidth: 110 }} value="mauls" disabled={!hasMauls}>Mauls</TabsTrigger>
           <TabsTrigger style={{ display: 'inline-flex', flex: '0 0 auto', minWidth: 110 }} value="goalkicks" disabled={!hasGoalKicks}>Palos</TabsTrigger>
@@ -999,15 +1027,15 @@ const ChartsTabs = (_props: any) => {
             {/* moved console.log out of JSX to avoid TSX expression type issues */}
               <div className="border rounded-lg p-4 h-80">
                 <h4 className="font-medium mb-2">Puntos por Jugador</h4>
-                <PlayerPointsChart events={effectiveEvents.filter(e => e.CATEGORY === 'POINTS' || e.event_type === 'POINTS')} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
+                <PlayerPointsChart events={effectiveEvents.filter(isPoints)} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
               </div>
               <div className="border rounded-lg p-4 h-80">
                 <h4 className="font-medium mb-2">Puntos por Tiempo</h4>
-                <PointsTimeChart events={effectiveEvents.filter(e => e.CATEGORY === 'POINTS' || e.event_type === 'POINTS')} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
+                <PointsTimeChart events={effectiveEvents.filter(isPoints)} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
               </div>
               <div className="border rounded-lg p-4 h-80">
                 <h4 className="font-medium mb-2">Tipo de Puntos</h4>
-                <PointsTypeChart events={effectiveEvents.filter(e => e.CATEGORY === 'POINTS' || e.event_type === 'POINTS')} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
+                <PointsTypeChart events={effectiveEvents.filter(isPoints)} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
               </div>
             </div>
           ) : (
@@ -1020,13 +1048,13 @@ const ChartsTabs = (_props: any) => {
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Tries</h3>
           {hasTries ? (
-            <div className="space-y-6">
-              {/* Gráficos básicos de tries (siempre mostrar) */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <TriesPlayerChart events={effectiveEvents.filter(e => (e.CATEGORY === 'POINTS' || e.event_type === 'POINTS'))} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
-                <TriesTimeChart events={effectiveEvents.filter(e => (e.CATEGORY === 'POINTS' || e.event_type === 'POINTS'))} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
-                <TriesPhasesChart events={effectiveEvents.filter(e => (e.CATEGORY === 'POINTS' || e.event_type === 'POINTS'))} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
-              </div>
+              <div className="space-y-6">
+                {/* Gráficos básicos de tries (siempre mostrar) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <TriesPlayerChart events={effectiveEvents.filter(isTries)} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
+                <TriesTimeChart events={effectiveEvents.filter(isTries)} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
+                <TriesPhasesChart events={effectiveEvents.filter(isTries)} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
+                </div>
 
               {/* Diagnóstico eliminado en esta versión de UI */}
               
@@ -1147,27 +1175,89 @@ const ChartsTabs = (_props: any) => {
           <h3 className="text-lg font-semibold">Set Pieces</h3>
           {hasSetPieces ? (
             <div className="space-y-8">
-              {filteredEvents.some(e => e.CATEGORY === 'SCRUM' || e.event_type === 'SCRUM') && (
+              {filteredEvents.some(isScrum) && (
                 <div>
                   <h4 className="text-md font-medium mb-4">Scrums</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <ScrumTeamChart events={filteredEvents.filter(e => e.CATEGORY === 'SCRUM' || e.event_type === 'SCRUM')} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
-                    <ScrumRivalChart events={filteredEvents.filter(e => e.CATEGORY === 'SCRUM' || e.event_type === 'SCRUM')} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
+                    <ScrumTeamChart events={filteredEvents.filter(isScrum)} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
+                    <ScrumRivalChart events={filteredEvents.filter(isScrum)} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
                   </div>
                 </div>
               )}
-              {filteredEvents.some(e => e.CATEGORY === 'LINEOUT' || e.event_type === 'LINEOUT') && (
+              {filteredEvents.some(isLineout) && (
                 <div>
                   <h4 className="text-md font-medium mb-4">Lineouts</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <LineoutTeamChart events={filteredEvents.filter(e => e.CATEGORY === 'LINEOUT' || e.event_type === 'LINEOUT')} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
-                    <LineoutRivalChart events={filteredEvents.filter(e => e.CATEGORY === 'LINEOUT' || e.event_type === 'LINEOUT')} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
+                    <LineoutTeamChart events={filteredEvents.filter(isLineout)} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
+                    <LineoutRivalChart events={filteredEvents.filter(isLineout)} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
                   </div>
                 </div>
               )}
             </div>
           ) : (
             <div className="text-center py-8 text-gray-500">No hay datos de Set Pieces para mostrar</div>
+          )}
+        </div>
+      </TabsContent>
+
+      <TabsContent value="scrums-detail">
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Detalle de Scrums</h3>
+          {hasScrumDetails ? (
+            <div className="space-y-6">
+              <ScrumDetailCharts
+                events={filteredEvents.filter(isScrum)}
+                matchInfo={matchInfo}
+                ourTeamsList={ourTeamsList}
+                onChartClick={(...args: any[]) => handleChartClick(...args)}
+              />
+              <ScrumDetailTable
+                events={filteredEvents.filter(isScrum)}
+                matchInfo={matchInfo}
+                ourTeamsList={ourTeamsList}
+                onRowClick={(event) => {
+                  const team = getTeamFromEvent(event);
+                  if (team) {
+                    handleChartClick("TEAM", team, "TEAM");
+                  }
+                }}
+              />
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              No hay datos de scrums con detalle para mostrar
+            </div>
+          )}
+        </div>
+      </TabsContent>
+
+      <TabsContent value="lineouts-detail">
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Detalle de Lineouts</h3>
+          {hasLineoutDetails ? (
+            <div className="space-y-6">
+              <LineoutDetailCharts
+                events={filteredEvents.filter(isLineout)}
+                matchInfo={matchInfo}
+                ourTeamsList={ourTeamsList}
+                onChartClick={(...args: any[]) => handleChartClick(...args)}
+              />
+              <LineoutDetailTable
+                events={filteredEvents.filter(isLineout)}
+                matchInfo={matchInfo}
+                ourTeamsList={ourTeamsList}
+                onRowClick={(event) => {
+                  const team = getTeamFromEvent(event);
+                  if (team) {
+                    handleChartClick("TEAM", team, "TEAM");
+                  }
+                }}
+              />
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              No hay datos de lineouts con detalle para mostrar
+            </div>
           )}
         </div>
       </TabsContent>
@@ -1201,24 +1291,24 @@ const ChartsTabs = (_props: any) => {
               <h3 className="text-lg font-semibold">Patadas a los Palos</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <GoalKicksEffectivityTeamChart 
-                  events={filteredEvents.filter(e => e.CATEGORY === 'GOAL-KICK' || e.event_type === 'GOAL-KICK')} 
+                  events={filteredEvents.filter(isGoalKick)} 
                   onChartClick={(...args:any)=>{handleChartClick(...args);}}
                   matchInfo={matchInfo}
                 />
                 <GoalKicksEffectivityOpponentChart 
-                  events={filteredEvents.filter(e => e.CATEGORY === 'GOAL-KICK' || e.event_type === 'GOAL-KICK')} 
+                  events={filteredEvents.filter(isGoalKick)} 
                   onChartClick={(...args:any)=>{handleChartClick(...args);}}
                   matchInfo={matchInfo}
                 />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <GoalKicksPlayerChart 
-                  events={filteredEvents.filter(e => e.CATEGORY === 'GOAL-KICK' || e.event_type === 'GOAL-KICK')} 
+                  events={filteredEvents.filter(isGoalKick)} 
                   onChartClick={(...args:any)=>{handleChartClick(...args);}}
                   matchInfo={matchInfo}
                 />
                 <GoalKicksTimeChart 
-                  events={filteredEvents.filter(e => e.CATEGORY === 'GOAL-KICK' || e.event_type === 'GOAL-KICK')} 
+                  events={filteredEvents.filter(isGoalKick)} 
                   onChartClick={(...args:any)=>{handleChartClick(...args);}}
                 />
               </div>
@@ -1251,42 +1341,42 @@ const ChartsTabs = (_props: any) => {
               <h3 className="text-lg font-semibold">Quiebres de Línea</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <LineBreaksPlayerChart 
-                  events={filteredEvents.filter(e => e.CATEGORY === 'BREAK' || e.event_type === 'BREAK')} 
+                  events={filteredEvents.filter(isLineBreak)} 
                   onChartClick={(...args:any)=>{handleChartClick(...args);}}
                   matchInfo={matchInfo}
                 />
                 <LineBreaksTimeChart 
-                  events={filteredEvents.filter(e => e.CATEGORY === 'BREAK' || e.event_type === 'BREAK')} 
+                  events={filteredEvents.filter(isLineBreak)} 
                   onChartClick={(...args:any)=>{handleChartClick(...args);}}
                 />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <LineBreaksTypeTeamChart 
-                  events={filteredEvents.filter(e => e.CATEGORY === 'BREAK' || e.event_type === 'BREAK')} 
+                  events={filteredEvents.filter(isLineBreak)} 
                   onChartClick={(...args:any)=>{handleChartClick(...args);}}
                   matchInfo={matchInfo}
                 />
                 <LineBreaksTypeOpponentChart 
-                  events={filteredEvents.filter(e => e.CATEGORY === 'BREAK' || e.event_type === 'BREAK')} 
+                  events={filteredEvents.filter(isLineBreak)} 
                   onChartClick={(...args:any)=>{handleChartClick(...args);}}
                   matchInfo={matchInfo}
                 />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <LineBreaksChannelTeamChart 
-                  events={filteredEvents.filter(e => e.CATEGORY === 'BREAK' || e.event_type === 'BREAK')} 
+                  events={filteredEvents.filter(isLineBreak)} 
                   onChartClick={(...args:any)=>{handleChartClick(...args);}}
                   matchInfo={matchInfo}
                 />
                 <LineBreaksChannelOpponentChart 
-                  events={filteredEvents.filter(e => e.CATEGORY === 'BREAK' || e.event_type === 'BREAK')} 
+                  events={filteredEvents.filter(isLineBreak)} 
                   onChartClick={(...args:any)=>{handleChartClick(...args);}}
                   matchInfo={matchInfo}
                 />
               </div>
               <div className="grid grid-cols-1">
                 <LineBreaksResultChart 
-                  events={filteredEvents.filter(e => e.CATEGORY === 'BREAK' || e.event_type === 'BREAK')} 
+                  events={filteredEvents.filter(isLineBreak)} 
                   onChartClick={(...args:any)=>{handleChartClick(...args);}}
                 />
               </div>

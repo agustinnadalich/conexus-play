@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Doughnut } from 'react-chartjs-2';
+import { detectOurTeams, getTeamFromEvent, normalizeString } from '../../utils/teamUtils';
+import { matchesCategory } from '@/utils/eventUtils';
 
 const LineBreaksChannelOpponentChart = ({ events, onChartClick, matchInfo }: any) => {
   const [chartData, setChartData] = useState<any>(null);
@@ -7,21 +9,24 @@ const LineBreaksChannelOpponentChart = ({ events, onChartClick, matchInfo }: any
   useEffect(() => {
     const getChannel = (event: any) => {
       return event.extra_data?.['CANAL-QUIEBRE'] || 
+             event.extra_data?.['CANAL DE QUIEBRE'] ||
              event.extra_data?.CANAL_QUIEBRE || 
              event.CANAL_QUIEBRE || 
              'Sin especificar';
     };
 
     const getTeam = (event: any) => {
-      return event.extra_data?.EQUIPO || event.EQUIPO || '';
+      return getTeamFromEvent(event) || event.extra_data?.EQUIPO || event.EQUIPO || '';
     };
 
-    const teamName = matchInfo?.team_name || 'PESCARA';
+    const detectedTeams = detectOurTeams(events || []);
+    const teamName = matchInfo?.team_name || matchInfo?.TEAM || matchInfo?.team || detectedTeams[0] || '';
+    const teamNameNorm = normalizeString(teamName).toUpperCase();
 
     const breaks = events.filter((e: any) => {
-      const category = e.event_type === 'BREAK' || e.CATEGORY === 'BREAK';
-      const team = getTeam(e).toUpperCase();
-      return category && team !== teamName.toUpperCase() && team !== '';
+      const category = matchesCategory(e as any, 'BREAK', ['QUIEBRE']);
+      const team = normalizeString(getTeam(e)).toUpperCase();
+      return category && (teamNameNorm ? (team !== '' && team !== teamNameNorm) : team !== '');
     });
 
     const channelCounts: any = {};
@@ -30,7 +35,9 @@ const LineBreaksChannelOpponentChart = ({ events, onChartClick, matchInfo }: any
       channelCounts[channel] = (channelCounts[channel] || 0) + 1;
     });
 
-    const channels = Object.keys(channelCounts).sort((a, b) => channelCounts[b] - channelCounts[a]);
+    const channels = Object.keys(channelCounts)
+      .filter(c => normalizeString(c).toUpperCase() !== 'SIN ESPECIFICAR')
+      .sort((a, b) => channelCounts[b] - channelCounts[a]);
     const total = breaks.length;
 
     const colors = [
@@ -61,6 +68,7 @@ const LineBreaksChannelOpponentChart = ({ events, onChartClick, matchInfo }: any
 
     const getChannel = (event: any) => {
       return event.extra_data?.['CANAL-QUIEBRE'] || 
+             event.extra_data?.['CANAL DE QUIEBRE'] ||
              event.extra_data?.CANAL_QUIEBRE || 
              event.CANAL_QUIEBRE || 
              'Sin especificar';
@@ -68,12 +76,12 @@ const LineBreaksChannelOpponentChart = ({ events, onChartClick, matchInfo }: any
 
     const filteredEvents = events.filter((ev: any) => {
       const channel = getChannel(ev);
-      const category = ev.CATEGORY || ev.event_type;
-      return category === 'BREAK' && channel === label;
+      return matchesCategory(ev as any, 'BREAK', ['QUIEBRE']) && channel === label;
     });
 
     const additionalFilters = [
-      { descriptor: 'CANAL-QUIEBRE', value: label }
+      { descriptor: 'CANAL-QUIEBRE', value: label },
+      { descriptor: 'CANAL DE QUIEBRE', value: label },
     ];
 
     onChartClick(event, elements, chart, 'channel', 'linebreaks-tab', additionalFilters, filteredEvents);
@@ -108,11 +116,13 @@ const LineBreaksChannelOpponentChart = ({ events, onChartClick, matchInfo }: any
     onClick: handleChartClick,
   };
 
-  return chartData?.data ? (
+  if (!chartData?.data || (chartData.total ?? 0) === 0) return null;
+
+  return (
     <div style={{ height: '400px' }}>
       <Doughnut data={chartData.data} options={chartOptions as any} plugins={[centerTextPlugin]} />
     </div>
-  ) : null;
+  );
 };
 
 export default LineBreaksChannelOpponentChart;

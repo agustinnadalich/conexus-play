@@ -27,18 +27,28 @@ const PlayerPointsChart = ({ events, onChartClick }) => {
   const playerLabels = [...new Set(rawPlayers.map(p => String(p).trim()))].sort((a, b) => String(a).localeCompare(String(b)));
 
     const getPointType = (ev:any) => {
-      return ev?.extra_data?.['TIPO-PUNTOS'] ?? ev?.extra_data?.TIPO_PUNTOS ?? ev?.TIPO_PUNTOS ?? ev?.['TIPO-PUNTOS'] ?? ev?.MISC ?? null;
+      return ev?.POINTS
+        ?? ev?.PUNTOS
+        ?? ev?.extra_data?.POINTS
+        ?? ev?.extra_data?.['TIPO-PUNTOS']
+        ?? ev?.extra_data?.TIPO_PUNTOS
+        ?? ev?.extra_data?.PUNTOS
+        ?? ev?.TIPO_PUNTOS
+        ?? ev?.['TIPO-PUNTOS']
+        ?? ev?.MISC
+        ?? ev?.extra_data?.MISC
+        ?? null;
     };
 
     const getPointsValue = (ev:any) => {
       const type = String(getPointType(ev) ?? '').toUpperCase();
       if (!type) return 0;
       if (type.includes('TRY')) return 5;
-      if (type.includes('CONVERSION')) return 2;
-      if (type.includes('PENALTY')) return 3;
+      if (type.includes('CONVERSION') || type.includes('CONVERT')) return 2;
+      if (type.includes('PENALTY') || type.includes('PENAL')) return 3;
       if (type.includes('DROP')) return 3;
       // fallback: sometimes numeric may exist under other keys
-      const v = ev?.["POINTS(VALUE)"] ?? ev?.["POINTS_VALUE"] ?? ev?.["POINTS VALUE"] ?? ev?.["POINTS"] ?? 0;
+      const v = ev?.["POINTS(VALUE)"] ?? ev?.["POINTS_VALUE"] ?? ev?.["POINTS VALUE"] ?? ev?.["POINTS"] ?? ev?.PUNTOS ?? ev?.extra_data?.PUNTOS ?? 0;
       const num = Number(v);
       return Number.isFinite(num) ? num : 0;
     };

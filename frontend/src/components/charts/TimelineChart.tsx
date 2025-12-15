@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, useEffect } from "react";
+import { useMemo, useRef, useState, useEffect, useCallback } from "react";
 import React from "react";
 import {
   ResponsiveContainer,
@@ -10,8 +10,8 @@ import {
   CartesianGrid,
   ReferenceLine,
 } from "recharts";
+import { useFilterContext } from "@/context/FilterContext";
 import { usePlayback } from "@/context/PlaybackContext";
-import { useFilterContext } from "../../context/FilterContext";
 import type { MatchEvent } from "@/types";
 import { Button } from "@/components/ui/button";
 
@@ -20,6 +20,114 @@ const secondsToGameClock = (sec: number): string => {
   const seconds = Math.floor(sec % 60);
   return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
 };
+
+const TooltipContent = React.memo(({ active, payload }: any) => {
+  if (active && payload && payload.length > 0) {
+    const event = payload[0].payload;
+
+    // Obtener información del jugador (omitir placeholders como 'unknown')
+    let playerInfo: string | null = null;
+    const placeholderNames = new Set(['unknown', 'Unknown', 'UNKNOWN', 'N/A', 'n/a', 'None', 'null']);
+    
+    // Prioridad 1: event.players (array desde API base_de_datos)
+    let rawPlayer = null;
+    if (event.players && Array.isArray(event.players)) {
+      rawPlayer = event.players;
+    } else {
+      // Prioridad 2-4: campos legacy
+      rawPlayer = event.extra_data?.JUGADOR ?? event.player_name ?? event.player ?? null;
+    }
+    
+    if (rawPlayer) {
+      if (Array.isArray(rawPlayer)) {
+        const joined = rawPlayer.join(', ');
+        playerInfo = placeholderNames.has(joined) ? null : joined;
+      } else {
+        const s = String(rawPlayer).trim();
+        playerInfo = placeholderNames.has(s) ? null : s;
+      }
+    }
+
+    // Campos calculados importantes (mostrar siempre)
+    const gameTime = event.extra_data?.Game_Time || event.Game_Time || 'N/A';
+    const period = event.extra_data?.DETECTED_PERIOD || event.period || 'N/A';
+    const timeGroup = event.extra_data?.Time_Group || 'N/A';
+    
+    // Obtener TODOS los descriptores del extra_data
+    const otherDescriptors: string[] = [];
+    // Solo excluir campos técnicos internos, NO los descriptores del juego
+    const excludedKeysList = [
+      'JUGADOR', 'PLAYER', 'PLAYERS', 'duration', 'DURATION', 'clip_start', 'clip_end',
+      'Start', 'End', 'TIME', 'Time',
+      // Campos internos/técnicos
+      'Original_start', 'Original_end', 'original_start', 'original_end',
+      'original_start_seconds', 'original_end_seconds',
+      // Ya los mostramos por separado
+      'Game_Time', 'GAME_TIME', 'game_time', 
+      'DETECTED_PERIOD', 'detected_period', 'Period', 'period',
+      'Time_Group', 'TIME_GROUP', 'time_group'
+    ];
+    const excludedKeys = new Set(excludedKeysList.map(k => k.toLowerCase()));
+    const excludedValues = new Set(['unknown', 'Unknown', 'UNKNOWN', 'N/A', 'n/a', 'null', 'None', '']);
+    
+    if (event.extra_data) {
+      for (const [key, value] of Object.entries(event.extra_data)) {
+        if (excludedKeys.has(String(key).toLowerCase())) continue;
+        if (value === null || value === "") continue;
+        if (typeof value === 'string' && excludedValues.has(value)) continue;
+        if (Array.isArray(value)) {
+          const cleaned = value.filter(v => !(typeof v === 'string' && excludedValues.has(v)));
+          if (cleaned.length === 0) continue;
+          otherDescriptors.push(`${key}: ${cleaned.join(', ')}`);
+        } else {
+          otherDescriptors.push(`${key}: ${value}`);
+        }
+      }
+    }
+    
+    // NO limitar - mostrar todos los descriptores
+    const displayedDetails = otherDescriptors;
+
+    return (
+      <div className="rounded bg-white p-3 shadow-lg border border-gray-300 text-sm max-w-md max-h-96 overflow-y-auto">
+        <div className="font-bold text-base mb-2 text-blue-700">{event.category}</div>
+        
+        {/* Información de tiempo */}
+        <div className="mb-2 pb-2 border-b border-gray-200">
+          <div className="grid grid-cols-2 gap-1 text-xs">
+            <div><strong>Timestamp:</strong> {secondsToGameClock(event.SECOND)}</div>
+            <div><strong>Duración:</strong> {Math.round(event.DURATION * 10) / 10}s</div>
+            <div><strong>Game Time:</strong> <span className="text-green-600 font-semibold">{gameTime}</span></div>
+            <div><strong>Período:</strong> <span className="text-purple-600 font-semibold">{period}</span></div>
+            <div className="col-span-2"><strong>Bloque:</strong> <span className="text-orange-600 font-semibold">{timeGroup}</span></div>
+          </div>
+        </div>
+        
+        {/* Jugador */}
+        {playerInfo && (
+          <div className="mb-2 pb-2 border-b border-gray-200">
+            <div><strong>Jugador:</strong> <span className="text-blue-600 font-semibold">{playerInfo}</span></div>
+          </div>
+        )}
+        
+        {/* Todos los descriptores */}
+        {displayedDetails.length > 0 && (
+          <div>
+            <div className="font-semibold mb-1 text-gray-700">Descriptores:</div>
+            <div className="grid grid-cols-1 gap-0.5">
+              {displayedDetails.map((desc, idx) => (
+                <div key={idx} className="text-xs text-gray-700 pl-2 py-0.5 hover:bg-gray-50">
+                  • {desc}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+  return null;
+});
 
 // TODO: revisar más adelante
 // Las últimas mejoras visuales (hatch/triángulo/tooltip/auto-centering suppression)
@@ -47,20 +155,91 @@ const TimelineChart = ({ filteredEvents, onEventClick }: { filteredEvents: Match
   const [chartWidth, setChartWidth] = useState<number>(600);
   const [xDomain, setXDomain] = useState<[number, number]>([0, 600]);
   const [zoomFactor, setZoomFactor] = useState<number>(1);
-  const { filterCategory, setFilterCategory } = useFilterContext();
-  const { setSelectedEvent, playEvent, currentTime } = usePlayback();
+  const lastAppliedDomainRef = useRef<[number, number]>([0, 600]);
+  const lastWidthRef = useRef<number>(0);
+  const { filterCategory, setFilterCategory, matchInfo } = useFilterContext();
+  const { setSelectedEvent, playEvent, currentTime, lastAppliedDelay } = usePlayback();
   // Track last user interaction (zoom/scroll/reset) to avoid auto-centering immediately after
   const lastUserActionRef = useRef<number>(0);
+  // Track last automatic center to avoid loops while el video avanza
+  const lastAutoCenterRef = useRef<number>(0);
+
+  // Mapear tiempos de video -> tiempos de juego usando offsets detectados
+  const timeMapping = useMemo(() => {
+    // Preferir datos del match si existen
+    const info: any = matchInfo || (filteredEvents[0] as any)?.match_info || {};
+    const kickoff1 = info.kick_off_1_seconds ?? info.KICK_OFF_1_SECONDS ?? null;
+    const kickoff2 = info.kick_off_2_seconds ?? info.KICK_OFF_2_SECONDS ?? null;
+    const end1 = info.end_1_seconds ?? info.END_1_SECONDS ?? null;
+
+    // Derivar offset a partir de eventos con Game_Time conocido
+    const parseGT = (gt: any) => {
+      if (typeof gt !== "string" || !gt.includes(":")) return null;
+      const [m, s] = gt.split(":").map(Number);
+      if (Number.isNaN(m) || Number.isNaN(s)) return null;
+      return m * 60 + s;
+    };
+
+    const firstP1 = filteredEvents.find(ev => (ev.extra_data?.DETECTED_PERIOD ?? ev.extra_data?.period ?? ev.period ?? 1) === 1);
+    const firstP2 = filteredEvents.find(ev => (ev.extra_data?.DETECTED_PERIOD ?? ev.extra_data?.period ?? ev.period ?? 1) === 2);
+
+    const gtP1 = parseGT(firstP1?.extra_data?.Game_Time ?? firstP1?.Game_Time ?? firstP1?.game_time);
+    const gtP2 = parseGT(firstP2?.extra_data?.Game_Time ?? firstP2?.Game_Time ?? firstP2?.game_time);
+
+    const tsP1 = firstP1 ? Number(firstP1.timestamp_sec ?? firstP1.SECOND ?? 0) : null;
+    const tsP2 = firstP2 ? Number(firstP2.timestamp_sec ?? firstP2.SECOND ?? 0) : null;
+
+    // Offsets: video_time = game_time + offset -> game_time = video_time - offset
+    const offset1 = (tsP1 !== null && gtP1 !== null) ? tsP1 - gtP1 : null;
+    const offset2 = (tsP2 !== null && gtP2 !== null) ? tsP2 - gtP2 : null;
+
+    // Derivar kickoff1/kickoff2 si no vienen de match_info
+    const kickoff1Derived = kickoff1 ?? tsP1 ?? 0;
+    const kickoff2Derived = kickoff2 ?? tsP2 ?? null;
+
+    const firstHalfDuration = (() => {
+      if (end1 != null && kickoff1Derived != null) return Number(end1) - Number(kickoff1Derived);
+      if (kickoff2Derived != null && kickoff1Derived != null) return Number(kickoff2Derived) - Number(kickoff1Derived);
+      return 2400; // fallback 40'
+    })();
+
+    return {
+      kickoff1: kickoff1Derived ?? 0,
+      kickoff2: kickoff2Derived,
+      firstHalfDuration,
+      offset1: offset1 ?? (kickoff1Derived ?? 0),
+      offset2: offset2 ?? (kickoff2Derived != null ? kickoff2Derived - firstHalfDuration : null),
+    };
+  }, [filteredEvents, matchInfo]);
+
+  const videoToGameSeconds = useCallback((videoSec: number | null | undefined): number => {
+    if (videoSec === null || videoSec === undefined || Number.isNaN(Number(videoSec))) return 0;
+    const { kickoff2, firstHalfDuration, offset1, offset2 } = timeMapping;
+    // Si tenemos offset específico para el segundo tiempo, úsalo al pasar el kickoff2
+    if (kickoff2 != null && videoSec >= kickoff2 && offset2 != null) {
+      return Math.max(0, Number(videoSec) - offset2);
+    }
+    // De lo contrario usar offset1
+    return Math.max(0, Number(videoSec) - offset1);
+  }, [timeMapping]);
 
   const initialXDomain = useMemo(() => {
     if (filteredEvents.length > 0) {
-      const padding = 60;
-      const start = Math.max(0, Math.min(...filteredEvents.map(e => e.timestamp_sec ?? 0)) - padding);
-      const end = Math.max(...filteredEvents.map(e => (e.timestamp_sec ?? 0) + (e.extra_data?.DURATION ?? 0))) + padding;
+      const padding = 30;
+      const gameTimes = filteredEvents.map(ev => {
+        const gt = ev.extra_data?.Game_Time || ev.Game_Time || null;
+        if (gt) {
+          const [m, s] = String(gt).split(":").map(Number);
+          if (!Number.isNaN(m) && !Number.isNaN(s)) return m * 60 + s;
+        }
+        return videoToGameSeconds(ev.timestamp_sec ?? ev.SECOND ?? 0);
+      });
+      const start = Math.max(0, Math.min(...gameTimes) - padding);
+      const end = Math.max(...gameTimes.map((gt, idx) => gt + (filteredEvents[idx]?.extra_data?.DURATION ?? 0))) + padding;
       return [start, end] as [number, number];
     }
     return [0, 600] as [number, number];
-  }, [filteredEvents]);
+  }, [filteredEvents, videoToGameSeconds]);
 
   // Helper: compare numeric domain arrays to avoid redundant updates
   const domainsEqual = (a: [number, number], b: [number, number]) => {
@@ -70,7 +249,18 @@ const TimelineChart = ({ filteredEvents, onEventClick }: { filteredEvents: Match
 
   // Debounce/coalesce domain updates coming from filteredEvents changes
   const domainTimeoutRef = useRef<number | null>(null);
+  const normalizeDomain = (domain: [number, number]): [number, number] => {
+    // Evita micro diferencias flotantes que podrían disparar renders en loop
+    return [Number(domain[0].toFixed(3)), Number(domain[1].toFixed(3))];
+  };
+
   const scheduleSetDomain = (target: [number, number], reason = "unknown") => {
+    const normalizedTarget = normalizeDomain(target);
+    // Si ya estamos en ese dominio (o prácticamente igual), no programar nada
+    if (domainsEqual(xDomain, normalizedTarget) || domainsEqual(lastAppliedDomainRef.current, normalizedTarget)) {
+      return;
+    }
+
     // Clear previous scheduled update
     if (domainTimeoutRef.current) {
       window.clearTimeout(domainTimeoutRef.current as number);
@@ -80,11 +270,11 @@ const TimelineChart = ({ filteredEvents, onEventClick }: { filteredEvents: Match
     // Short debounce to coalesce multiple rapid updates (e.g., many charts firing)
     domainTimeoutRef.current = window.setTimeout(() => {
       domainTimeoutRef.current = null;
-      if (!domainsEqual(xDomain, target)) {
+      if (!domainsEqual(xDomain, normalizedTarget)) {
         // Debug log to help diagnose looping behaviour
         // eslint-disable-next-line no-console
-        console.log(`TimelineChart - scheduleSetDomain applying (${reason}):`, target, "prev:", xDomain);
-        requestAnimationFrame(() => setXDomain(target));
+        console.log(`TimelineChart - scheduleSetDomain applying (${reason}):`, normalizedTarget, "prev:", xDomain);
+        requestAnimationFrame(() => setXDomain(normalizedTarget));
       }
     }, 45);
   };
@@ -107,10 +297,10 @@ const TimelineChart = ({ filteredEvents, onEventClick }: { filteredEvents: Match
       } else if (ev.extra_data?.DURATION) {
         duration = ev.extra_data.DURATION;
       }
-      return (ev.timestamp_sec ?? 0) + duration;
+      return videoToGameSeconds(ev.timestamp_sec ?? 0) + duration;
     }), 60);
     return max + 5;
-  }, [filteredEvents]);
+  }, [filteredEvents, videoToGameSeconds]);
 
   const colors = useMemo(() => {
     const map: Record<string, string> = {};
@@ -131,17 +321,28 @@ const TimelineChart = ({ filteredEvents, onEventClick }: { filteredEvents: Match
     } else if (ev.extra_data?.DURATION) {
       duration = ev.extra_data.DURATION;
     }
+    // Calcular Game_Time en segundos para alinear con eje X
+    let gameTimeSec: number | null = null;
+    const rawGT = ev.extra_data?.Game_Time || ev.Game_Time || ev.game_time;
+    if (rawGT && typeof rawGT === "string" && rawGT.includes(":")) {
+      const [m, s] = rawGT.split(":").map(Number);
+      if (!Number.isNaN(m) && !Number.isNaN(s)) gameTimeSec = m * 60 + s;
+    }
+    if (gameTimeSec === null) {
+      gameTimeSec = videoToGameSeconds(ev.timestamp_sec ?? ev.SECOND ?? 0);
+    }
 
     return {
       ...ev,
       category: ev.event_type || "Otro",
       SECOND: ev.timestamp_sec ?? 0,
+      game_time_sec: gameTimeSec,
       DURATION: duration,
       color: colors[ev.event_type] || (ev.IS_OPPONENT ? "#e74c3c" : "#3498db"),
     };
-  }), [filteredEvents, colors]);
+  }), [filteredEvents, colors, videoToGameSeconds]);
 
-  const CustomTooltip = ({ active, payload }: any) => {
+  const CustomTooltip = useCallback(({ active, payload }: any) => {
     if (active && payload && payload.length > 0) {
       const event = payload[0].payload;
 
@@ -247,20 +448,31 @@ const TimelineChart = ({ filteredEvents, onEventClick }: { filteredEvents: Match
       );
     }
     return null;
-  };
+  }, []);
 
   useEffect(() => {
-    // Use a stable resize listener instead of depending on the mutable ref.current
-    const updateSize = () => {
-      if (chartRef.current) {
-        const rect = chartRef.current.getBoundingClientRect();
-        setChartWidth(rect.width);
+    // Resize observer estable con memo del último ancho para evitar loops por oscilaciones mínimas
+    const updateSize = (width: number) => {
+      const rounded = Math.round(width);
+      if (Math.abs(rounded - (lastWidthRef.current || 0)) > 2) {
+        lastWidthRef.current = rounded;
+        setChartWidth(rounded);
       }
     };
 
-    updateSize();
-    window.addEventListener('resize', updateSize);
-    return () => window.removeEventListener('resize', updateSize);
+    const node = chartRef.current;
+    if (!node) return;
+
+    const rect = node.getBoundingClientRect();
+    updateSize(rect.width);
+
+    const observer = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        updateSize(entry.contentRect.width);
+      }
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
   }, []);
 
   useEffect(() => {
@@ -318,19 +530,13 @@ const TimelineChart = ({ filteredEvents, onEventClick }: { filteredEvents: Match
   useEffect(() => {
     if (filteredEvents.length > 0) {
       const padding = 60;
-      const start = Math.max(0, Math.min(...filteredEvents.map(e => e.timestamp_sec ?? 0)) - padding);
-      const end = Math.max(...filteredEvents.map(e => (e.timestamp_sec ?? 0) + (e.extra_data?.DURATION ?? 0))) + padding;
-      // Si estamos en mobile, limitar el dominio inicial a los primeros 20 minutos para no mostrar todo tan comprimido
-      if (isMobile) {
-        const mobileEnd = Math.min(end, 1200);
-        const target: [number, number] = [0, mobileEnd];
-        scheduleSetDomain(target, 'initial-mobile');
-      } else {
-        const target: [number, number] = [start, end];
-        scheduleSetDomain(target, 'initial');
-      }
+      const gameTimes = filteredEvents.map(e => data.find(d => d.id === e.id)?.game_time_sec ?? videoToGameSeconds(e.timestamp_sec ?? 0));
+      const start = Math.max(0, Math.min(...gameTimes) - padding);
+      const end = Math.max(...gameTimes) + padding;
+      const target: [number, number] = isMobile ? [0, Math.min(end, 1200)] : [start, end];
+      scheduleSetDomain(target, isMobile ? 'initial-mobile' : 'initial');
     }
-  }, [filteredEvents]);
+  }, [filteredEvents, isMobile, data, videoToGameSeconds]);
 
   const handleZoomChange = (zoomIn: boolean) => {
     // Calculamos el nuevo factor de zoom de forma acumulativa
@@ -411,6 +617,10 @@ const TimelineChart = ({ filteredEvents, onEventClick }: { filteredEvents: Match
   useEffect(() => {
     // noop in production
   }, [xDomain]);
+  useEffect(() => {
+    // Mantener el ref de último dominio aplicado sincronizado
+    lastAppliedDomainRef.current = xDomain;
+  }, [xDomain]);
 
   useEffect(() => {
     // noop in production
@@ -424,27 +634,35 @@ const TimelineChart = ({ filteredEvents, onEventClick }: { filteredEvents: Match
   const canZoomIn = currentVisibleRange > MIN_VISIBLE + 1; // permitir si aún podemos reducir
   const canZoomOut = currentVisibleRange < MAX_VISIBLE - 1; // permitir si aún podemos ampliar
 
-  // Mantener la línea de tiempo visible: si currentTime sale del xDomain, desplazamos la ventana
+  // Mantener la línea de tiempo visible: si currentTime (en game_time) sale del xDomain, desplazamos la ventana
   useEffect(() => {
     if (typeof currentTime !== 'number' || isNaN(currentTime)) return;
     // Avoid auto-centering immediately after a user interaction (zoom/scroll/reset)
     const SUPPRESS_MS = 900; // ms
     if (Date.now() - lastUserActionRef.current < SUPPRESS_MS) return;
+    // Evitar re-centrados en cadena mientras el video avanza
+    const AUTO_CENTER_COOLDOWN_MS = 1400;
+    if (Date.now() - lastAutoCenterRef.current < AUTO_CENTER_COOLDOWN_MS) return;
 
+    const currentGameTime = videoToGameSeconds(currentTime);
     const [start, end] = xDomain;
-    if (currentTime < start || currentTime > end) {
-      const range = end - start;
+    const range = end - start;
+    const margin = Math.max(5, range * 0.12); // ampliar margen para que el follow no dispare con cada pequeño desfasaje
+    const insideWithMargin = currentGameTime >= start + margin && currentGameTime <= end - margin;
+
+    if (!insideWithMargin) {
       // Centrar el currentTime dentro de la ventana
-      let newStart = Math.max(initialXDomain[0], currentTime - range / 2);
+      let newStart = Math.max(initialXDomain[0], currentGameTime - range / 2);
       let newEnd = newStart + range;
       if (newEnd > initialXDomain[1]) {
         newEnd = initialXDomain[1];
         newStart = Math.max(initialXDomain[0], newEnd - range);
       }
       const target: [number, number] = [newStart, newEnd];
-      if (!domainsEqual(xDomain, target)) {
+      if (!domainsEqual(xDomain, target) && !domainsEqual(lastAppliedDomainRef.current, target)) {
         // Deferimos el setState para evitar actualizaciones sincrónicas durante el commit
-        requestAnimationFrame(() => setXDomain(target));
+        lastAutoCenterRef.current = Date.now();
+        requestAnimationFrame(() => setXDomain(normalizeDomain(target)));
       }
     }
   }, [currentTime, xDomain, initialXDomain]);
@@ -466,6 +684,24 @@ const TimelineChart = ({ filteredEvents, onEventClick }: { filteredEvents: Match
 
   const dynamicHeight = Math.min(30, Math.max(16, 150 / categories.length));
   const chartHeight = Math.min(400, Math.max(100, categories.length * dynamicHeight * 2));
+  const currentGameTime = useMemo(() => {
+    const appliedDelay = Number(lastAppliedDelay || 0);
+    return videoToGameSeconds((currentTime ?? 0) - appliedDelay);
+  }, [currentTime, videoToGameSeconds, lastAppliedDelay]);
+
+  useEffect(() => {
+    try {
+      // eslint-disable-next-line no-console
+      console.log("Timeline current line", {
+        currentTimeVideo: currentTime,
+        currentGameTime,
+        offset1: timeMapping.offset1,
+        offset2: timeMapping.offset2,
+        kickoff1: timeMapping.kickoff1,
+        kickoff2: timeMapping.kickoff2,
+      });
+    } catch (_) {}
+  }, [currentTime, currentGameTime, timeMapping]);
 
   return (
     <div className="w-full">
@@ -473,7 +709,7 @@ const TimelineChart = ({ filteredEvents, onEventClick }: { filteredEvents: Match
         <ResponsiveContainer width="100%" height="100%">
           <ScatterChart margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
             <CartesianGrid />
-            <XAxis dataKey="timestamp_sec" type="number" domain={xDomain} tickFormatter={(tick) => secondsToGameClock(tick)} />
+            <XAxis dataKey="game_time_sec" type="number" domain={xDomain} tickFormatter={(tick) => secondsToGameClock(tick)} />
             <YAxis
               type="category"
               dataKey="category"
@@ -497,12 +733,14 @@ const TimelineChart = ({ filteredEvents, onEventClick }: { filteredEvents: Match
               width={60}
               allowDuplicatedCategory={false}
             />
-            <Tooltip content={<CustomTooltip />} />
+            <Tooltip content={<TooltipContent />} isAnimationActive={false} />
             <Scatter
-              data={data.filter(ev => ev.SECOND >= xDomain[0] && ev.SECOND <= xDomain[1])}
+              data={data.filter(ev => ev.game_time_sec >= xDomain[0] && ev.game_time_sec <= xDomain[1])}
+              isAnimationActive={false}
               shape={(props: any) => {
                 const { cx, cy, payload } = props;
-                const width = Math.max((payload.DURATION / (xDomain[1] - xDomain[0])) * chartWidth, 4);
+                const effectiveWidth = Math.min(chartWidth, 1800); // limitar ancho usado para evitar loops por mega pantallas
+                const width = Math.max((payload.DURATION / (xDomain[1] - xDomain[0])) * effectiveWidth, 4);
                 const x = cx;
                 const y = cy - dynamicHeight / 2.1;
                 const isOpp = Boolean(payload.IS_OPPONENT || payload.extra_data?.OPPONENT || String(payload.extra_data?.EQUIPO ?? payload.TEAM ?? '').toUpperCase().includes('OPPONENT') || String(payload.extra_data?.EQUIPO ?? payload.TEAM ?? '').toUpperCase().includes('AWAY'));
@@ -540,7 +778,6 @@ const TimelineChart = ({ filteredEvents, onEventClick }: { filteredEvents: Match
                     {isOpp && (
                       <>
                         <rect x={0} y={0} width={width} height={dynamicHeight} rx={1} fill={`url(#${patternId})`} />
-                        <polygon points={`${width - triangleSize},0 ${width},${dynamicHeight/2} ${width - triangleSize},${dynamicHeight}`} fill={hatchStroke} opacity={0.9} />
                       </>
                     )}
                   </svg>
@@ -548,7 +785,7 @@ const TimelineChart = ({ filteredEvents, onEventClick }: { filteredEvents: Match
               }}
             />
 
-            <CurrentTimeLine currentTime={currentTime ?? 0} xDomain={xDomain} />
+            <CurrentTimeLine currentTime={currentGameTime ?? 0} xDomain={xDomain} />
           </ScatterChart>
         </ResponsiveContainer>
       </div>

@@ -54,8 +54,18 @@ export const isOpponentEvent = (event: MatchEvent): boolean => {
 
     const teamField = pickValue(event, ["TEAM", "EQUIPO", "team", "equipo", "SIDE"]) || "";
     const t = normalizeString(teamField);
-    if (!t) return false;
-    return /\b(OPP|OPPONENT|RIVAL|VISITA|AWAY|OPONENTE|VISITANTE|OPPONENTE)\b/.test(t);
+    if (t) {
+      if (/\b(OPP|OPPONENT|RIVAL|VISITA|AWAY|OPONENTE|VISITANTE|OPPONENTE)\b/.test(t)) return true;
+      // Si explícitamente dice nuestro equipo, marcamos como nuestro
+      if (/\b(NUESTRO|OUR|LOCAL|HOME)\b/.test(t)) return false;
+    }
+
+    // Fallback: usar código del evento cuando TEAM no viene
+    const code = normalizeString(event.code || event.CATEGORY || event.event_type || "");
+    if (/\bRIVAL\b/.test(code) || /\bOPPONENT\b/.test(code)) return true;
+
+    // Por defecto, si no tenemos info, consideramos nuestro equipo para no perder datos en charts
+    return false;
   } catch (_err) {
     return false;
   }

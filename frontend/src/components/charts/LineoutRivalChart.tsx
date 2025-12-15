@@ -6,7 +6,26 @@ ChartJS.register(ArcElement, Tooltip, Legend);
 
 const LineoutRivalChart = ({ events, onChartClick }) => {
   const getResult = (event: any) => {
-    return event.extra_data?.['RESULTADO-LINE'] || event.extra_data?.LINE_RESULT || event.LINE_RESULT;
+    const candidates: any[] = [];
+    candidates.push(event.extra_data?.['RESULTADO-LINE']);
+    candidates.push(event.extra_data?.LINE_RESULT);
+    candidates.push(event.LINE_RESULT);
+    const lineField = event.extra_data?.LINE;
+    if (Array.isArray(lineField)) candidates.push(...lineField);
+
+    const pick = (vals: any[]) => {
+      for (const v of vals) {
+        if (v === undefined || v === null) continue;
+        const s = String(v).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
+        if (!s || s === 'RIVAL' || s === 'SAN LUIS') continue;
+        if (s.includes('LIMPIA') || s.includes('CLEAN') || s.includes('GAN')) return 'WIN';
+        if (s.includes('SUCI') || s.includes('DIRTY')) return 'WIN';
+        if (s.includes('TORCID') || s.includes('NOT-STRAIGHT') || s.includes('PERD')) return 'LOSE';
+      }
+      return '';
+    };
+
+    return pick(candidates);
   };
   
   const isOpponent = (event: any) => {
@@ -26,26 +45,12 @@ const LineoutRivalChart = ({ events, onChartClick }) => {
   // Solo eventos del rival
   const rivalEvents = events.filter(event => isOpponent(event));
   
-  const won = rivalEvents.filter(event => {
-    const result = getResult(event);
-    return result && (
-      String(result).toUpperCase().includes('CLEAN') || 
-      String(result).toUpperCase().includes('DIRTY') ||
-      String(result).toUpperCase().includes('WIN')
-    );
-  }).length;
-  
-  const lost = rivalEvents.filter(event => {
-    const result = getResult(event);
-    return result && (
-      String(result).toUpperCase().includes('LOST') || 
-      String(result).toUpperCase().includes('NOT-STRAIGHT') ||
-      String(result).toUpperCase().includes('LOSE')
-    );
-  }).length;
-  
+  const won = rivalEvents.filter(event => getResult(event) === 'WIN').length;
+  const lost = rivalEvents.filter(event => getResult(event) === 'LOSE').length;
   const total = won + lost;
   const effectiveness = total > 0 ? ((won / total) * 100).toFixed(1) : 0;
+
+  if (total === 0) return null;
 
   const data = {
     labels: ['Ganados', 'Perdidos'],
