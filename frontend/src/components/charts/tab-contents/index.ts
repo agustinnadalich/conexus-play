@@ -1,0 +1,17 @@
+export { default as OverviewTabContent } from "./OverviewTabContent";
+export { default as PossessionTabContent } from "./PossessionTabContent";
+export { default as TacklesTabContent } from "./TacklesTabContent";
+export { default as PointsTabContent } from "./PointsTabContent";
+export { default as TriesTabContent } from "./TriesTabContent";
+export { default as PenaltiesTabContent } from "./PenaltiesTabContent";
+export { default as FreeKicksTabContent } from "./FreeKicksTabContent";
+export { default as CardsTabContent } from "./CardsTabContent";
+export { default as TurnoversTabContent } from "./TurnoversTabContent";
+export { default as SetPiecesTabContent } from "./SetPiecesTabContent";
+export { default as ScrumsDetailTabContent } from "./ScrumsDetailTabContent";
+export { default as LineoutsDetailTabContent } from "./LineoutsDetailTabContent";
+export { default as RucksTabContent } from "./RucksTabContent";
+export { default as MaulsTabContent } from "./MaulsTabContent";
+export { default as GoalKicksTabContent } from "./GoalKicksTabContent";
+export { default as OpenKicksTabContent } from "./OpenKicksTabContent";
+export { default as LineBreaksTabContent } from "./LineBreaksTabContent";

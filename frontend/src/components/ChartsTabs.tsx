@@ -4,60 +4,26 @@ import {
   TabsTrigger,
   TabsContent,
 } from "@/components/ui/tabs";
-import { useState, useEffect } from "react";
-import TacklesBarChart from "./charts/TacklesBarChart";
-import MissedTacklesBarChart from "./charts/MissedTacklesBarChart";
-import TacklesByTeamChart from "./charts/TacklesByTeamChart";
-import TacklesTimeChart from "./charts/TacklesTimeChart";
-import AdvancePieChart from "./charts/AdvancePieChart";
-import PlayerPointsChart from "./charts/PlayerPointsChart";
-import PointsTimeChart from "./charts/PointsTimeChart";
-import PointsTypeChart from "./charts/PointsTypeChart";
-import TriesPlayerChart from "./charts/TriesPlayerChart";
-import TriesTimeChart from "./charts/TriesTimeChart";
-import TriesOriginChart from "./charts/TriesOriginChart";
-import TriesPhasesChart from "./charts/TriesPhasesChart";
-import PenaltiesPlayerBarChart from "./charts/PenaltiesPlayerBarChart";
-import PenaltiesTimeChart from "./charts/PenaltiesTimeChart";
-import PenaltiesCausePieChart from "./charts/PenaltiesCausePieChart";
-import TurnoversRecoversBarChart from "./charts/TurnoversRecoversBarChart";
-import TurnoversLostBarChart from "./charts/TurnoversLostBarChart";
-import TurnoversTypeChart from "./charts/TurnoversTypeChart";
-import TurnoversTimeChart from "./charts/TurnoversTimeChart";
-import ScrumEffectivityChart from "./charts/ScrumEffectivityChart";
-import LineoutEffectivityChart from "./charts/LineoutEffectivityChart";
-import ScrumTeamChart from "./charts/ScrumTeamChart";
-import ScrumRivalChart from "./charts/ScrumRivalChart";
-import LineoutTeamChart from "./charts/LineoutTeamChart";
-import LineoutRivalChart from "./charts/LineoutRivalChart";
-import GoalKicksEffectivityTeamChart from "./charts/GoalKicksEffectivityTeamChart";
-import GoalKicksEffectivityOpponentChart from "./charts/GoalKicksEffectivityOpponentChart";
-import GoalKicksPlayerChart from "./charts/GoalKicksPlayerChart";
-import GoalKicksTimeChart from "./charts/GoalKicksTimeChart";
-import LineBreaksPlayerChart from "./charts/LineBreaksPlayerChart";
-import LineBreaksTypeTeamChart from "./charts/LineBreaksTypeTeamChart";
-import LineBreaksTypeOpponentChart from "./charts/LineBreaksTypeOpponentChart";
-import LineBreaksChannelTeamChart from "./charts/LineBreaksChannelTeamChart";
-import LineBreaksChannelOpponentChart from "./charts/LineBreaksChannelOpponentChart";
-import LineBreaksTimeChart from "./charts/LineBreaksTimeChart";
-import LineBreaksResultChart from "./charts/LineBreaksResultChart";
-import CardsSummaryChart from "./charts/CardsSummaryChart";
-import PassesOutcomeChart from "./charts/PassesOutcomeChart";
-import MaulsOutcomeChart from "./charts/MaulsOutcomeChart";
-import OpenPlayKicksChart from "./charts/OpenPlayKicksChart";
-import PossessionShareChart from "./charts/PossessionShareChart";
-import InfringementsCauseChart from "./charts/InfringementsCauseChart";
-import RucksSpeedPieChart from "./charts/RucksSpeedPieChart";
-import OpenPlayKicksTeamPieChart from "./charts/OpenPlayKicksTeamPieChart";
-import OpenPlayKicksPlayerChart from "./charts/OpenPlayKicksPlayerChart";
-import RucksFieldZonesChart from "./charts/RucksFieldZonesChart";
-import ScrumDetailTable from "./charts/ScrumDetailTable";
-import LineoutDetailTable from "./charts/LineoutDetailTable";
-import ScrumDetailCharts from "./charts/ScrumDetailCharts";
-import LineoutDetailCharts from "./charts/LineoutDetailCharts";
-// import TimelineChart from "./charts/TimelineChart";
-// import ScatterChart from "./charts/ScatterChart";
-// Aquí luego podrás importar los otros charts
+import { useEffect } from "react";
+import {
+  OverviewTabContent,
+  PossessionTabContent,
+  TacklesTabContent,
+  PointsTabContent,
+  TriesTabContent,
+  PenaltiesTabContent,
+  FreeKicksTabContent,
+  CardsTabContent,
+  TurnoversTabContent,
+  SetPiecesTabContent,
+  ScrumsDetailTabContent,
+  LineoutsDetailTabContent,
+  RucksTabContent,
+  MaulsTabContent,
+  GoalKicksTabContent,
+  OpenKicksTabContent,
+  LineBreaksTabContent,
+} from "./charts/tab-contents";
 import { useFilterContext } from "../context/FilterContext";
 import { getTeamFromEvent, normalizeString, isOurTeam, computeTackleStatsAggregated, detectOurTeams } from "../utils/teamUtils";
 import { matchesCategory, isOpponentEvent as isOpponent } from "../utils/eventUtils";
@@ -113,6 +79,8 @@ const ChartsTabs = (_props: any) => {
     matchInfo?: any;
     ourTeamsList: string[];
   };
+
+  const filteredEventsList = Array.isArray(filteredEvents) ? filteredEvents : [];
 
     // Devuelve el estado de origen de tries:
     // 'calculated' = al menos un try tiene un origen real distinto de OTROS/RC
@@ -259,7 +227,7 @@ const ChartsTabs = (_props: any) => {
 
   // Quick booleans for presence of data in new tabs
   // Use filteredEvents when available, otherwise fallback to original events so tabs can be enabled during debug
-  const eventsForPresence = (filteredEvents && filteredEvents.length > 0) ? filteredEvents : (events || []);
+  const eventsForPresence = (filteredEventsList.length > 0) ? filteredEventsList : (events || []);
   const hasPoints = (eventsForPresence || []).some((event) => isPoints(event));
 
   const extractPointType = (event: any) => {
@@ -292,12 +260,12 @@ const ChartsTabs = (_props: any) => {
   const hasOriginData = triesOriginStatus === 'calculated';
   const hasPenalties = (eventsForPresence || []).some((event) => isPenalties(event));
   const hasFreeKicks = (eventsForPresence || []).some((event) => isFreeKicks(event));
-  const hasTurnovers = (filteredEvents || []).some((event) => event.CATEGORY === "TURNOVER+" || event.CATEGORY === "TURNOVER-" || event.event_type === "TURNOVER+" || event.event_type === "TURNOVER-");
-  const hasSetPieces = (filteredEvents || []).some((event) => isScrum(event) || isLineout(event));
-  const hasScrumDetails = (filteredEvents || []).some((event) => isScrum(event));
-  const hasLineoutDetails = (filteredEvents || []).some((event) => isLineout(event));
-  const hasGoalKicks = (filteredEvents || []).some((event) => isGoalKick(event));
-  const hasLineBreaks = (filteredEvents || []).some((event) => isLineBreak(event));
+  const hasTurnovers = filteredEventsList.some((event) => event.CATEGORY === "TURNOVER+" || event.CATEGORY === "TURNOVER-" || event.event_type === "TURNOVER+" || event.event_type === "TURNOVER-");
+  const hasSetPieces = filteredEventsList.some((event) => isScrum(event) || isLineout(event));
+  const hasScrumDetails = filteredEventsList.some((event) => isScrum(event));
+  const hasLineoutDetails = filteredEventsList.some((event) => isLineout(event));
+  const hasGoalKicks = filteredEventsList.some((event) => isGoalKick(event));
+  const hasLineBreaks = filteredEventsList.some((event) => isLineBreak(event));
   const hasCards = (eventsForPresence || []).some((event) => matchesCategory(event, 'CARD', ['TARJETA', 'YELLOW-CARD', 'RED-CARD']) || (matchesCategory(event, 'PENALTY', ['PENAL']) && (String(event.AVANCE ?? event.ADVANCE ?? event.extra_data?.AVANCE ?? event.extra_data?.ADVANCE ?? '').trim() !== '')));
   const hasPasses = false; // ocultado por ahora
   const hasErrors = false; // ocultado por ahora
@@ -307,11 +275,11 @@ const ChartsTabs = (_props: any) => {
   const hasMauls = (eventsForPresence || []).some((event) => matchesCategory(event, 'MAUL', ['MAULS', 'MAULL']));
   const hasOpenKicks = (eventsForPresence || []).some((event) => isKickOpen(event) && !isGoalKick(event));
   const hasPossession = (events || []).some((event) => matchesCategory(event, 'POSSESSION', ['POSESION', 'ATTACK', 'DEFENSE', 'POSSESSION_START']));
-  const penaltyEvents = filteredEvents.filter(e => isPenalties(e));
-  const freeKickEvents = filteredEvents.filter(e => isFreeKicks(e));
+  const penaltyEvents = filteredEventsList.filter(e => isPenalties(e));
+  const freeKickEvents = filteredEventsList.filter(e => isFreeKicks(e));
   const hasPenaltyPlayers = penaltyEvents.some(e => getPlayerNameGeneric(e));
   const hasFreeKickPlayers = freeKickEvents.some(e => getPlayerNameGeneric(e));
-  const hasRuckPositions = filteredEvents.some(e => matchesCategory(e,'RUCK',['RUCKS','RACK','RUK']) && (e.pos_x !== undefined || e.x !== undefined || e.COORDINATE_X !== undefined || e.extra_data?.pos_x !== undefined || e.extra_data?.x !== undefined));
+  const hasRuckPositions = filteredEventsList.some(e => matchesCategory(e,'RUCK',['RUCKS','RACK','RUK']) && (e.pos_x !== undefined || e.x !== undefined || e.COORDINATE_X !== undefined || e.extra_data?.pos_x !== undefined || e.extra_data?.x !== undefined));
 
   // Función para manejar clicks en gráficos y agregar filtros
   const handleChartClick = (...args: any[]) => {
@@ -601,9 +569,13 @@ const ChartsTabs = (_props: any) => {
         // Filtrado especial para equipos (soporta categorías agregadas)
         if (descriptor === 'TEAM' || descriptor === 'EQUIPO') {
           const eventTeam = getTeamFromEvent(event);
+          const normalizeTeamVal = (val: any) =>
+            normalizeString(val)
+              .replace(/['’]/g, '')
+              .replace(/\s+/g, '');
           
           // Normalizar el valor del filtro para aceptar diferentes variaciones
-          const normalizedValue = value.toUpperCase().trim();
+          const normalizedValue = normalizeTeamVal(value);
           
           if (normalizedValue === 'OUR_TEAM' || normalizedValue === 'OUR_TEAMS' || normalizedValue === 'NUESTRO EQUIPO' || normalizedValue === 'NUESTROS EQUIPOS') {
             // Filtrar eventos de nuestros equipos
@@ -617,8 +589,8 @@ const ChartsTabs = (_props: any) => {
             return matches;
           } else {
             // Filtrado por nombre específico de equipo
-            const normalizedEventTeam = normalizeString(eventTeam);
-            const normalizedSearchValue = normalizeString(value);
+            const normalizedEventTeam = normalizeTeamVal(eventTeam);
+            const normalizedSearchValue = normalizeTeamVal(value);
             const matches = normalizedEventTeam === normalizedSearchValue;
             console.log("🔍 TEAM specific check:", normalizedEventTeam, "===", normalizedSearchValue, "->", matches);
             return matches;
@@ -628,7 +600,15 @@ const ChartsTabs = (_props: any) => {
         // Filtrado especial para avances (manejar tanto ADVANCE como AVANCE y advance_type)
         if (descriptor === 'ADVANCE' || descriptor === 'AVANCE') {
           // Soportar múltiples ubicaciones y variantes donde puede aparecer el dato de avance
-          const eventAdvance =
+          const normalizeAdv = (raw: any) => {
+            const s = String(raw ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
+            if (!s) return '';
+            if (s.startsWith('POS')) return 'POSITIVE';
+            if (s.startsWith('NEU')) return 'NEUTRAL';
+            if (s.startsWith('NEG')) return 'NEGATIVE';
+            return s;
+          };
+          const eventAdvanceRaw =
             event.extra_data?.descriptors?.AVANCE ||
             event.extra_data?.AVANCE ||
             event.extra_data?.advance ||
@@ -638,14 +618,98 @@ const ChartsTabs = (_props: any) => {
             event.AVANCE ||
             null;
 
-          let matches = false;
-          if (Array.isArray(eventAdvance)) {
-            matches = eventAdvance.includes(value);
-          } else {
-            matches = eventAdvance === value;
-          }
+          const eventVals = Array.isArray(eventAdvanceRaw) ? eventAdvanceRaw : [eventAdvanceRaw];
+          const normTarget = normalizeAdv(value);
+          const matches = eventVals.some((v) => normalizeAdv(v) === normTarget);
 
-          console.log("🔍 ADVANCE/AVANCE check:", descriptor, "=", eventAdvance, "===", value, "->", matches);
+          console.log("🔍 ADVANCE/AVANCE check:", descriptor, "=", eventAdvanceRaw, "===", value, "->", matches);
+          return matches;
+        }
+
+        // Filtrado para resultado de scrum
+        if (descriptor === 'SCRUM_RESULT' || descriptor === 'SCRUM') {
+          const normalizeScrumRes = (raw: any) => {
+            const s = String(raw ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+            if (s.includes('WIN') || s.includes('GAN')) return 'WIN';
+            if (s.includes('LOSE') || s.includes('LOST') || s.includes('PERD')) return 'LOSE';
+            if (s.includes('PEN')) return 'PENAL';
+            if (s.includes('FREE')) return 'FREE';
+            return s.trim();
+          };
+          const evVal =
+            event.SCRUM_RESULT ??
+            event.SCRUM ??
+            event.extra_data?.SCRUM ??
+            event.extra_data?.SCRUM_RESULT ??
+            event.RESULTADO ??
+            null;
+          const target = normalizeScrumRes(value);
+          const evNorm = normalizeScrumRes(evVal);
+          const matches = evNorm === target;
+          console.log('🔍 SCRUM_RESULT check:', { evVal, evNorm, target, matches });
+          return matches;
+        }
+
+        // Filtrado para posición de lineout (normaliza etiquetas con porcentajes)
+        if (descriptor === 'LINE_POSITION' || descriptor === 'LINEOUT_POSITION' || descriptor === 'POSICION-LINE') {
+          const normalizePos = (raw: any) => {
+            const s = String(raw ?? '').toUpperCase().trim();
+            const base = s.split(' ')[0].replace(/[()%]/g, '');
+            if (base === 'SIN') return 'SIN';
+            return base;
+          };
+          const evPos =
+            event.LINE_POSITION ??
+            event.LINEOUT_POSITION ??
+            event['LINEOUT_POSITION'] ??
+            event.extra_data?.LINE_POSITION ??
+            event.extra_data?.LINEOUT_POSITION ??
+            event.extra_data?.['POSICION-LINE'] ??
+            event.extra_data?.['POSICION_LINE'] ??
+            event['POSICION-LINE'];
+          const matches = normalizePos(evPos) === normalizePos(value);
+          console.log('🔍 LINE_POSITION check:', { evPos, value, matches });
+          return matches;
+        }
+
+        // Filtrado para lanzador de lineout (remover prefijo T- y porcentajes)
+        if (descriptor === 'LINE_THROWER') {
+          const normalizeThrower = (raw: any) => {
+            const s = String(raw ?? '')
+              .replace(/^T[- ]/i, '')
+              .replace(/\(.*?\)/g, '')
+              .trim()
+              .toUpperCase();
+            return s;
+          };
+          const evThrower =
+            event.LINE_THROWER ??
+            event.extra_data?.LINE_THROWER ??
+            event.extra_data?.['TIRADOR-LINE'] ??
+            event['TIRADOR-LINE'] ??
+            event.PLAYER ??
+            event.extra_data?.PLAYER;
+          const matches = normalizeThrower(evThrower) === normalizeThrower(value);
+          console.log('🔍 LINE_THROWER check:', { evThrower, value, matches });
+          return matches;
+        }
+
+        // Filtrado especial para tipo de puntos (acepta aliases y normaliza)
+        if (descriptor === 'TIPO-PUNTOS' || descriptor === 'TIPO_PUNTOS' || descriptor === 'type_of_points') {
+          const normalizePointType = (raw: any) => String(raw ?? '').toUpperCase().trim().replace(/[\s_-]+/g, '');
+          const candidates = [
+            event.POINTS,
+            event.PUNTOS,
+            event.extra_data?.['TIPO-PUNTOS'],
+            event.extra_data?.TIPO_PUNTOS,
+            event.extra_data?.type_of_points,
+            event.extra_data?.type,
+            event.type,
+          ];
+          const eventType = normalizePointType(candidates.find((c) => c !== undefined && c !== null));
+          const target = normalizePointType(value);
+          const matches = eventType === target || (eventType && target && eventType.includes(target));
+          console.log('🔍 TIPO-PUNTOS check:', { eventType, target, matches });
           return matches;
         }
 
@@ -682,6 +746,29 @@ const ChartsTabs = (_props: any) => {
           return kickType().toUpperCase() === String(value || '').toUpperCase();
         }
 
+        // Filtrado para resultados de lineout (normalizado)
+        if (descriptor === 'LINEOUT_RESULT' || descriptor === 'LINE_RESULT' || descriptor === 'RESULTADO-LINE') {
+          const normalizeLineoutResult = (raw: any) => {
+            const s = String(raw ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim().replace(/[\s_-]+/g, '');
+            if (!s) return '';
+            if (s.includes('LIMPIA') || s.includes('CLEAN') || s.includes('SUCIA') || s.includes('DIRTY') || s.includes('GAN') || s.includes('WIN')) return 'WIN';
+            if (s.includes('LOST') || s.includes('LOSE') || s.includes('PERD') || s.includes('TORCID') || s.includes('NOTSTRAIGHT') || s.includes('STEAL')) return 'LOSE';
+            return s;
+          };
+          const evVal =
+            event.LINE_RESULT ??
+            event['LINE_RESULT'] ??
+            event.extra_data?.LINE_RESULT ??
+            event.extra_data?.['RESULTADO-LINE'] ??
+            event.extra_data?.['RESULTADO_LINE'] ??
+            event['RESULTADO-LINE'];
+          const evNorm = normalizeLineoutResult(evVal);
+          const targetNorm = normalizeLineoutResult(value);
+          const matches = evNorm === targetNorm;
+          console.log('🔍 LINEOUT_RESULT check:', { evVal, evNorm, targetNorm, matches });
+          return matches;
+        }
+
         // Filtrado para CARD_TYPE (derivado)
         if (descriptor === 'CARD_TYPE') {
           const deriveCardType = () => {
@@ -703,9 +790,20 @@ const ChartsTabs = (_props: any) => {
 
         // Filtrado especial para origen de tries (TRY_ORIGIN)
         if (descriptor === 'TRY_ORIGIN' || descriptor === 'ORIGEN_TRY' || descriptor === 'ORIGEN') {
+          const normalizeOrigin = (raw: any) => {
+            if (!raw && raw !== 0) return 'OTROS';
+            const s = String(raw).toUpperCase().trim();
+            if (s === '' || s === 'RC') return 'OTROS';
+            if (s.includes('SCRUM')) return 'SCRUM';
+            if (s.includes('LINE')) return 'LINEOUT';
+            if (s.replace(/\s+/g, '').includes('KICKOFF') || s.includes('KICK')) return 'KICKOFF';
+            if (s.includes('TURN')) return 'TURNOVER';
+            if (s === 'OTROS' || s === 'OTHER' || s === 'OTRO') return 'OTROS';
+            return s;
+          };
           const rawOrigin = event.TRY_ORIGIN ?? event.extra_data?.TRY_ORIGIN ?? event.extra_data?.ORIGIN ?? event.ORIGIN;
-          const v = rawOrigin === undefined || rawOrigin === null ? '' : String(rawOrigin).toUpperCase().trim();
-          const target = String(value).toUpperCase().trim();
+          const v = normalizeOrigin(rawOrigin);
+          const target = normalizeOrigin(value);
           const matches = v === target || (v === '' && target === '(<NONE>)');
           console.log("🔍 TRY_ORIGIN check:", rawOrigin, "->", v, "expected->", target, "->", matches);
           return matches;
@@ -812,7 +910,23 @@ const ChartsTabs = (_props: any) => {
 
   // Durante debug, permitir abrir las pestañas aunque `filteredEvents` esté vacío
   // Usar `events` como fallback para permitir inspección; revertir esta lógica en QA final
-  const effectiveEvents = (filteredEvents && filteredEvents.length > 0) ? filteredEvents : (events || []);
+  const effectiveEvents = (filteredEventsList.length > 0) ? filteredEventsList : (events || []);
+
+  const tacklesAvailability = {
+    hasTacklesBarChartData: hasTacklesBarChartData(filteredEventsList),
+    hasTackleAdvanceData: hasTackleAdvanceData(filteredEventsList),
+    hasTacklesTimeChartData: hasTacklesTimeChartData(filteredEventsList),
+    hasMissedTacklesBarChartData: hasMissedTacklesBarChartData(filteredEventsList),
+    hasTacklesByTeamChartData: hasTacklesByTeamChartData(filteredEventsList),
+  };
+
+  const turnoverEvents = filteredEventsList.filter(e => e.CATEGORY === 'TURNOVER+' || e.CATEGORY === 'TURNOVER-' || e.event_type === 'TURNOVER+' || e.event_type === 'TURNOVER-');
+  const scrumEvents = filteredEventsList.filter(isScrum);
+  const lineoutEvents = filteredEventsList.filter(isLineout);
+  const goalKickEvents = filteredEventsList.filter(isGoalKick);
+  const lineBreakEvents = filteredEventsList.filter(isLineBreak);
+  const pointsEvents = effectiveEvents.filter(isPoints);
+  const triesEvents = effectiveEvents.filter(isTries);
 
   if (!effectiveEvents || effectiveEvents.length === 0) {
     return (
@@ -894,497 +1008,138 @@ const ChartsTabs = (_props: any) => {
       
 
       <TabsContent value="overview">
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Resumen del partido</h3>
-          <p>Eventos totales: {effectiveEvents.length}</p>
-          <p>Debug: {JSON.stringify(effectiveEvents.slice(0, 2), null, 2)}</p>
-        </div>
+        <OverviewTabContent effectiveEvents={effectiveEvents} />
       </TabsContent>
 
       <TabsContent value="possession">
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Posesión</h3>
-          {hasPossession ? (
-            <div className="space-y-4">
-              <PossessionShareChart events={events} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
-              {hasRuckPositions && (
-                <RucksFieldZonesChart events={effectiveEvents} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
-              )}
-            </div>
-          ) : (
-            <div className="text-center py-8 text-gray-500">No hay datos de posesión disponibles</div>
-          )}
-        </div>
+        <PossessionTabContent
+          events={events || []}
+          effectiveEvents={effectiveEvents}
+          hasPossession={hasPossession}
+          hasRuckPositions={hasRuckPositions}
+          onChartClick={handleChartClick}
+        />
       </TabsContent>
 
       <TabsContent value="tackles">
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Estadísticas de Tackles</h3>
-          
-          {/* Grid de gráficos - todos los gráficos de tackles */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Tackles por jugador (Nuestro equipo - barras apiladas por avance) - solo mostrar si hay datos */}
-            {hasTacklesBarChartData(filteredEvents) && (
-              <div className="border rounded-lg p-4">
-                <h4 className="font-medium mb-2">Tackles por Jugador</h4>
-                <TacklesBarChart 
-                  events={filteredEvents} 
-                  onBarClick={(category, player) => {
-                    console.log("Clicked on player:", player);
-                    handleChartClick("player", player, "JUGADOR");
-                  }}
-                />
-              </div>
-            )}
-
-            {/* Distribución de Avances en Tackles - solo mostrar si hay datos */}
-            {hasTackleAdvanceData(filteredEvents) && (
-              <div className="border rounded-lg p-4">
-                <h4 className="font-medium mb-2">Distribución de Avances en Tackles</h4>
-                <AdvancePieChart 
-                  events={filteredEvents} 
-                  category="TACKLE" 
-                  onChartClick={(event, elements, chart, chartType, tabId, additionalFilters) => {
-                    console.log("Advance pie clicked:", chartType, additionalFilters);
-                    console.log("Additional filters details:", additionalFilters?.[0]);
-                    if (additionalFilters && additionalFilters.length > 0) {
-                      const advanceFilter = additionalFilters.find(f => f.descriptor === "ADVANCE");
-                      if (advanceFilter) {
-                        console.log("Found advance filter:", advanceFilter);
-                        handleChartClick("advance", advanceFilter.value, "AVANCE"); // Usar AVANCE en español
-                      }
-                    }
-                  }}
-                />
-              </div>
-            )}
-
-            {/* Tackles por tiempo de juego - solo mostrar si hay datos */}
-            {hasTacklesTimeChartData(filteredEvents) && (
-              <div className="border rounded-lg p-4">
-                <h4 className="font-medium mb-2">Tackles por Tiempo de Juego</h4>
-                <div className="h-80">
-                  <TacklesTimeChart 
-                    events={filteredEvents} 
-                    onChartClick={(chartType, value, descriptor) => {
-                      handleChartClick(chartType, value, descriptor);
-                    }}
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Tackles errados - solo mostrar si hay datos */}
-            {hasMissedTacklesBarChartData(filteredEvents) && (
-              <div className="border rounded-lg p-4">
-                <h4 className="font-medium mb-2">Tackles Errados</h4>
-                <div className="h-80">
-                  <MissedTacklesBarChart 
-                    events={filteredEvents} 
-                    onChartClick={(chartType, value, descriptor) => {
-                      handleChartClick(chartType, value, descriptor);
-                    }}
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Comparación por equipos - solo mostrar si hay datos */}
-            {hasTacklesByTeamChartData(filteredEvents) && (
-              <div className="border rounded-lg p-4">
-                <h4 className="font-medium mb-2">Tackles por Equipo - Efectividad</h4>
-                <div className="h-80">
-                  <TacklesByTeamChart 
-                    events={filteredEvents} 
-                    onChartClick={(chartType, value, descriptor) => {
-                      handleChartClick(chartType, value, descriptor);
-                    }}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Mensaje cuando no hay gráficos disponibles */}
-          {!hasTacklesBarChartData(filteredEvents) && 
-           !hasTackleAdvanceData(filteredEvents) && 
-           !hasTacklesTimeChartData(filteredEvents) && 
-           !hasMissedTacklesBarChartData(filteredEvents) && 
-           !hasTacklesByTeamChartData(filteredEvents) && (
-            <div className="text-center py-8 text-gray-500">
-              No hay datos de tackles disponibles para mostrar
-            </div>
-          )}
-        </div>
+        <TacklesTabContent
+          filteredEvents={filteredEventsList}
+          availability={tacklesAvailability}
+          onChartClick={handleChartClick}
+          onEventClick={_props.onEventClick}
+        />
       </TabsContent>
 
       <TabsContent value="points">
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Points</h3>
-          {hasPoints ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/** Debug info: print counts to console to help identify missing data */}
-            {/* moved console.log out of JSX to avoid TSX expression type issues */}
-              <div className="border rounded-lg p-4 h-80">
-                <h4 className="font-medium mb-2">Puntos por Jugador</h4>
-                <PlayerPointsChart events={effectiveEvents.filter(isPoints)} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
-              </div>
-              <div className="border rounded-lg p-4 h-80">
-                <h4 className="font-medium mb-2">Puntos por Tiempo</h4>
-                <PointsTimeChart events={effectiveEvents.filter(isPoints)} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
-              </div>
-              <div className="border rounded-lg p-4 h-80">
-                <h4 className="font-medium mb-2">Tipo de Puntos</h4>
-                <PointsTypeChart events={effectiveEvents.filter(isPoints)} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-8 text-gray-500">No hay datos de Points para mostrar</div>
-          )}
-        </div>
+        <PointsTabContent hasPoints={hasPoints} pointsEvents={pointsEvents} onChartClick={handleChartClick} onEventClick={_props.onEventClick} />
       </TabsContent>
 
       <TabsContent value="tries">
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Tries</h3>
-          {hasTries ? (
-              <div className="space-y-6">
-                {/* Gráficos básicos de tries (siempre mostrar) */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <TriesPlayerChart events={effectiveEvents.filter(isTries)} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
-                <TriesTimeChart events={effectiveEvents.filter(isTries)} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
-                <TriesPhasesChart events={effectiveEvents.filter(isTries)} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
-                </div>
-
-              {/* Diagnóstico eliminado en esta versión de UI */}
-              
-              {/* Gráfico de origen (solo si hay datos de origen calculados) */}
-              {triesOriginStatus === 'calculated' ? (
-                <div className="grid grid-cols-1 gap-6">
-                  <TriesOriginChart events={effectiveEvents.filter(e => (e.CATEGORY === 'POINTS' || e.event_type === 'POINTS'))} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
-                </div>
-              ) : triesOriginStatus === 'present_but_generic' ? (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                  <p className="text-yellow-800">
-                    <strong>Datos de origen presentes pero genéricos:</strong> Se detectaron campos de origen en los eventos, pero todos están en estado genérico ("OTROS" o "RC").
-                    El gráfico de origen no muestra información diferenciada hasta que el enricher calcule orígenes específicos.
-                  </p>
-                </div>
-              ) : (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                  <p className="text-yellow-800">
-                    <strong>Gráfico de origen no disponible:</strong> Los datos de origen de tries no han sido calculados. 
-                    Esto se debe a que el análisis de secuencias de juego aún no está implementado en el proceso de importación.
-                  </p>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="text-center py-8 text-gray-500">No hay datos de Tries para mostrar</div>
-          )}
-        </div>
+        <TriesTabContent
+          hasTries={hasTries}
+          triesOriginStatus={triesOriginStatus}
+          triesEvents={triesEvents}
+          pointsEvents={pointsEvents}
+          onChartClick={handleChartClick}
+          onEventClick={_props.onEventClick}
+        />
       </TabsContent>
 
       <TabsContent value="penalties">
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Penales</h3>
-          {hasPenalties ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {hasPenaltyPlayers && (
-                <PenaltiesPlayerBarChart
-                  events={penaltyEvents}
-                  category="PENALTY"
-                  title="Penales por Jugador"
-                  tabId="penalties-tab"
-                  onChartClick={(...args:any)=>{handleChartClick(...args);}}
-                />
-              )}
-              <PenaltiesTimeChart
-                events={penaltyEvents}
-                category="PENALTY"
-                title="Penales por Bloque de Tiempo"
-                tabId="penalties-tab"
-                onChartClick={(...args:any)=>{handleChartClick(...args);}}
-              />
-              <InfringementsCauseChart events={penaltyEvents} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
-            </div>
-          ) : (
-            <div className="text-center py-8 text-gray-500">No hay datos de Penales para mostrar</div>
-          )}
-        </div>
+        <PenaltiesTabContent
+          hasPenalties={hasPenalties}
+          hasPenaltyPlayers={hasPenaltyPlayers}
+          penaltyEvents={penaltyEvents}
+          onChartClick={handleChartClick}
+          onEventClick={_props.onEventClick}
+        />
       </TabsContent>
 
       <TabsContent value="freekicks">
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Free-kicks</h3>
-          {hasFreeKicks ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {hasFreeKickPlayers && (
-                <PenaltiesPlayerBarChart
-                  events={freeKickEvents}
-                  category="FREE-KICK"
-                  title="Free-kicks por Jugador"
-                  tabId="freekicks-tab"
-                  onChartClick={(...args:any)=>{handleChartClick(...args);}}
-                />
-              )}
-              <PenaltiesTimeChart
-                events={freeKickEvents}
-                category="FREE-KICK"
-                title="Free-kicks por Bloque de Tiempo"
-                tabId="freekicks-tab"
-                onChartClick={(...args:any)=>{handleChartClick(...args);}}
-              />
-              <InfringementsCauseChart events={freeKickEvents} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
-            </div>
-          ) : (
-            <div className="text-center py-8 text-gray-500">No hay datos de Free-kicks para mostrar</div>
-          )}
-        </div>
+        <FreeKicksTabContent
+          hasFreeKicks={hasFreeKicks}
+          hasFreeKickPlayers={hasFreeKickPlayers}
+          freeKickEvents={freeKickEvents}
+          onChartClick={handleChartClick}
+          onEventClick={_props.onEventClick}
+        />
       </TabsContent>
 
       <TabsContent value="cards">
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Tarjetas</h3>
-          {hasCards ? (
-            <CardsSummaryChart events={effectiveEvents} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
-          ) : (
-            <div className="text-center py-8 text-gray-500">No hay datos de Tarjetas para mostrar</div>
-          )}
-        </div>
+        <CardsTabContent hasCards={hasCards} effectiveEvents={effectiveEvents} onChartClick={handleChartClick} onEventClick={_props.onEventClick} />
+          onEventClick={_props.onEventClick}
       </TabsContent>
 
       <TabsContent value="turnovers">
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Turnovers</h3>
-          {hasTurnovers ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <TurnoversRecoversBarChart events={filteredEvents.filter(e => e.CATEGORY === 'TURNOVER+' || e.CATEGORY === 'TURNOVER-' || e.event_type === 'TURNOVER+' || e.event_type === 'TURNOVER-')} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
-              <TurnoversLostBarChart events={filteredEvents.filter(e => e.CATEGORY === 'TURNOVER+' || e.CATEGORY === 'TURNOVER-' || e.event_type === 'TURNOVER+' || e.event_type === 'TURNOVER-')} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
-              <TurnoversTypeChart events={filteredEvents.filter(e => e.CATEGORY === 'TURNOVER+' || e.CATEGORY === 'TURNOVER-' || e.event_type === 'TURNOVER+' || e.event_type === 'TURNOVER-')} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
-              <TurnoversTimeChart events={filteredEvents.filter(e => e.CATEGORY === 'TURNOVER+' || e.CATEGORY === 'TURNOVER-' || e.event_type === 'TURNOVER+' || e.event_type === 'TURNOVER-')} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
-            </div>
-          ) : (
-            <div className="text-center py-8 text-gray-500">No hay datos de Turnovers para mostrar</div>
-          )}
-        </div>
+        <TurnoversTabContent hasTurnovers={hasTurnovers} turnoverEvents={turnoverEvents} onChartClick={handleChartClick} onEventClick={_props.onEventClick} />
+          onEventClick={_props.onEventClick}
       </TabsContent>
 
       <TabsContent value="setpieces">
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Set Pieces</h3>
-          {hasSetPieces ? (
-            <div className="space-y-8">
-              {filteredEvents.some(isScrum) && (
-                <div>
-                  <h4 className="text-md font-medium mb-4">Scrums</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <ScrumTeamChart events={filteredEvents.filter(isScrum)} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
-                    <ScrumRivalChart events={filteredEvents.filter(isScrum)} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
-                  </div>
-                </div>
-              )}
-              {filteredEvents.some(isLineout) && (
-                <div>
-                  <h4 className="text-md font-medium mb-4">Lineouts</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <LineoutTeamChart events={filteredEvents.filter(isLineout)} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
-                    <LineoutRivalChart events={filteredEvents.filter(isLineout)} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="text-center py-8 text-gray-500">No hay datos de Set Pieces para mostrar</div>
-          )}
-        </div>
+        <SetPiecesTabContent
+          hasSetPieces={hasSetPieces}
+          scrumEvents={scrumEvents}
+          lineoutEvents={lineoutEvents}
+          onChartClick={handleChartClick}
+          matchInfo={matchInfo}
+          ourTeamsList={ourTeamsList}
+        />
       </TabsContent>
 
       <TabsContent value="scrums-detail">
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Detalle de Scrums</h3>
-          {hasScrumDetails ? (
-            <div className="space-y-6">
-              <ScrumDetailCharts
-                events={filteredEvents.filter(isScrum)}
-                matchInfo={matchInfo}
-                ourTeamsList={ourTeamsList}
-                onChartClick={(...args: any[]) => handleChartClick(...args)}
-              />
-              <ScrumDetailTable
-                events={filteredEvents.filter(isScrum)}
-                matchInfo={matchInfo}
-                ourTeamsList={ourTeamsList}
-                onRowClick={(event) => {
-                  const team = getTeamFromEvent(event);
-                  if (team) {
-                    handleChartClick("TEAM", team, "TEAM");
-                  }
-                }}
-              />
-            </div>
-          ) : (
-            <div className="text-center py-8 text-gray-500">
-              No hay datos de scrums con detalle para mostrar
-            </div>
-          )}
-        </div>
+        <ScrumsDetailTabContent
+          hasScrumDetails={hasScrumDetails}
+          scrumEvents={scrumEvents}
+          matchInfo={matchInfo}
+          ourTeamsList={ourTeamsList}
+          onChartClick={handleChartClick}
+          onEventClick={_props.onEventClick}
+        />
       </TabsContent>
 
       <TabsContent value="lineouts-detail">
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Detalle de Lineouts</h3>
-          {hasLineoutDetails ? (
-            <div className="space-y-6">
-              <LineoutDetailCharts
-                events={filteredEvents.filter(isLineout)}
-                matchInfo={matchInfo}
-                ourTeamsList={ourTeamsList}
-                onChartClick={(...args: any[]) => handleChartClick(...args)}
-              />
-              <LineoutDetailTable
-                events={filteredEvents.filter(isLineout)}
-                matchInfo={matchInfo}
-                ourTeamsList={ourTeamsList}
-                onRowClick={(event) => {
-                  const team = getTeamFromEvent(event);
-                  if (team) {
-                    handleChartClick("TEAM", team, "TEAM");
-                  }
-                }}
-              />
-            </div>
-          ) : (
-            <div className="text-center py-8 text-gray-500">
-              No hay datos de lineouts con detalle para mostrar
-            </div>
-          )}
-        </div>
+        <LineoutsDetailTabContent
+          hasLineoutDetails={hasLineoutDetails}
+          lineoutEvents={lineoutEvents}
+          matchInfo={matchInfo}
+          ourTeamsList={ourTeamsList}
+          onChartClick={handleChartClick}
+          onEventClick={_props.onEventClick}
+        />
       </TabsContent>
 
       <TabsContent value="rucks">
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Rucks</h3>
-          {hasRucks ? (
-            <RucksSpeedPieChart events={effectiveEvents} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
-          ) : (
-            <div className="text-center py-8 text-gray-500">No hay datos de Rucks para mostrar</div>
-          )}
-        </div>
+        <RucksTabContent hasRucks={hasRucks} effectiveEvents={effectiveEvents} onChartClick={handleChartClick} />
       </TabsContent>
 
       <TabsContent value="mauls">
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Mauls</h3>
-          {hasMauls ? (
-            <MaulsOutcomeChart events={effectiveEvents} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
-          ) : (
-            <div className="text-center py-8 text-gray-500">No hay datos de Mauls para mostrar</div>
-          )}
-        </div>
+        <MaulsTabContent hasMauls={hasMauls} effectiveEvents={effectiveEvents} onChartClick={handleChartClick} />
       </TabsContent>
 
       <TabsContent value="goalkicks">
-        <div className="space-y-4">
-          {hasGoalKicks ? (
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Patadas a los Palos</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <GoalKicksEffectivityTeamChart 
-                  events={filteredEvents.filter(isGoalKick)} 
-                  onChartClick={(...args:any)=>{handleChartClick(...args);}}
-                  matchInfo={matchInfo}
-                />
-                <GoalKicksEffectivityOpponentChart 
-                  events={filteredEvents.filter(isGoalKick)} 
-                  onChartClick={(...args:any)=>{handleChartClick(...args);}}
-                  matchInfo={matchInfo}
-                />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <GoalKicksPlayerChart 
-                  events={filteredEvents.filter(isGoalKick)} 
-                  onChartClick={(...args:any)=>{handleChartClick(...args);}}
-                  matchInfo={matchInfo}
-                />
-                <GoalKicksTimeChart 
-                  events={filteredEvents.filter(isGoalKick)} 
-                  onChartClick={(...args:any)=>{handleChartClick(...args);}}
-                />
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-8 text-gray-500">No hay datos de Patadas a los Palos para mostrar</div>
-          )}
-        </div>
+        <GoalKicksTabContent
+          hasGoalKicks={hasGoalKicks}
+          goalKickEvents={goalKickEvents}
+          matchInfo={matchInfo}
+          onChartClick={handleChartClick}
+        />
       </TabsContent>
 
       <TabsContent value="openkicks">
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Patadas en juego abierto</h3>
-          {hasOpenKicks ? (
-            <div className="space-y-4">
-              <OpenPlayKicksTeamPieChart events={effectiveEvents} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
-              <OpenPlayKicksPlayerChart events={effectiveEvents} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
-              <OpenPlayKicksChart events={effectiveEvents} onChartClick={(...args:any)=>{handleChartClick(...args);}} />
-            </div>
-          ) : (
-            <div className="text-center py-8 text-gray-500">No hay datos de patadas en juego abierto</div>
-          )}
-        </div>
+        <OpenKicksTabContent
+          hasOpenKicks={hasOpenKicks}
+          effectiveEvents={effectiveEvents}
+          onChartClick={handleChartClick}
+        />
       </TabsContent>
 
       <TabsContent value="linebreaks">
-        <div className="space-y-4">
-          {hasLineBreaks ? (
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Quiebres de Línea</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <LineBreaksPlayerChart 
-                  events={filteredEvents.filter(isLineBreak)} 
-                  onChartClick={(...args:any)=>{handleChartClick(...args);}}
-                  matchInfo={matchInfo}
-                />
-                <LineBreaksTimeChart 
-                  events={filteredEvents.filter(isLineBreak)} 
-                  onChartClick={(...args:any)=>{handleChartClick(...args);}}
-                />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <LineBreaksTypeTeamChart 
-                  events={filteredEvents.filter(isLineBreak)} 
-                  onChartClick={(...args:any)=>{handleChartClick(...args);}}
-                  matchInfo={matchInfo}
-                />
-                <LineBreaksTypeOpponentChart 
-                  events={filteredEvents.filter(isLineBreak)} 
-                  onChartClick={(...args:any)=>{handleChartClick(...args);}}
-                  matchInfo={matchInfo}
-                />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <LineBreaksChannelTeamChart 
-                  events={filteredEvents.filter(isLineBreak)} 
-                  onChartClick={(...args:any)=>{handleChartClick(...args);}}
-                  matchInfo={matchInfo}
-                />
-                <LineBreaksChannelOpponentChart 
-                  events={filteredEvents.filter(isLineBreak)} 
-                  onChartClick={(...args:any)=>{handleChartClick(...args);}}
-                  matchInfo={matchInfo}
-                />
-              </div>
-              <div className="grid grid-cols-1">
-                <LineBreaksResultChart 
-                  events={filteredEvents.filter(isLineBreak)} 
-                  onChartClick={(...args:any)=>{handleChartClick(...args);}}
-                />
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-8 text-gray-500">No hay datos de Quiebres para mostrar</div>
-          )}
-        </div>
+        <LineBreaksTabContent
+          hasLineBreaks={hasLineBreaks}
+          lineBreakEvents={lineBreakEvents}
+          matchInfo={matchInfo}
+          onChartClick={handleChartClick}
+        />
       </TabsContent>
 
       {/* Scatter tab desactivada */}

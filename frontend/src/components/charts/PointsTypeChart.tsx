@@ -155,10 +155,10 @@ const PointsTypeChart = ({ events, onChartClick }) => {
     }
     const label = chart.data.labels[el.index ?? el.element?.index ?? el.element?.$context?.dataIndex ?? el.element?.$context?.dataIndex];
     const type = label.includes(' (Our Team)') ? label.replace(' (Our Team)', '') : label.replace(' (Opponent)', '');      
-    // Enviar filtros para ambas variantes de campo (TIPO-PUNTOS / PUNTOS) para abarcar ambos orígenes
+    // Filtrar por el tipo de puntos (no por la cantidad numérica) para evitar dejar la vista sin eventos
     onChartClick(event, elements, chart, "points_type", "points-tab", [
       { descriptor: "TIPO-PUNTOS", value: type },
-      { descriptor: "PUNTOS", value: type },
+      { descriptor: "type_of_points", value: type },
     ]);
   };
 

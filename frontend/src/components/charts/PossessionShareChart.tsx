@@ -65,8 +65,8 @@ const PossessionShareChart: React.FC<Props> = ({ events, onChartClick }) => {
     const chart = elements[0].element?.$context?.chart;
     const idx = elements[0].index ?? elements[0].element?.$context?.dataIndex;
     const label = chartData.labels[idx];
-    const side = label.toString().includes('rival') ? 'OPPONENT' : 'OUR';
-    const filters = [{ descriptor: 'POSSESSION_SIDE', value: side }];
+    const side = label.toString().includes('rival') ? 'OPPONENT' : 'OUR_TEAM';
+    const filters = [{ descriptor: 'TEAM_SIDE', value: side }];
     onChartClick(event, elements, chart, 'possession', 'possession-tab', filters);
   };
 

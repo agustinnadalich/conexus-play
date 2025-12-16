@@ -4,7 +4,7 @@ import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
-const LineoutTeamChart = ({ events, onChartClick }) => {
+const LineoutTeamChart = ({ events, onChartClick, matchInfo, ourTeamsList }: any) => {
   const getResult = (event: any) => {
     const candidates: any[] = [];
     candidates.push(event.extra_data?.['RESULTADO-LINE']);
@@ -16,11 +16,11 @@ const LineoutTeamChart = ({ events, onChartClick }) => {
     const pick = (vals: any[]) => {
       for (const v of vals) {
         if (v === undefined || v === null) continue;
-        const s = String(v).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
+        const s = String(v).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim().replace(/\s+/g, '');
         if (!s || s === 'RIVAL' || s === 'SAN LUIS') continue;
         if (s.includes('LIMPIA') || s.includes('CLEAN') || s.includes('GAN')) return 'WIN';
-        if (s.includes('SUCI') || s.includes('DIRTY')) return 'WIN';
-        if (s.includes('TORCID') || s.includes('NOT-STRAIGHT') || s.includes('PERD')) return 'LOSE';
+        if (s.includes('SUCIA') || s.includes('DIRTY')) return 'WIN';
+        if (s.includes('TORCID') || s.includes('NOTSTRAIGHT') || s.includes('NOT-STRAIGHT') || s.includes('PERD') || s.includes('LOST') || s.includes('LOSE') || s.includes('STEAL')) return 'LOSE';
       }
       return '';
     };
@@ -29,6 +29,25 @@ const LineoutTeamChart = ({ events, onChartClick }) => {
   };
   
   const isOpponent = (event: any) => {
+    if (ourTeamsList && Array.isArray(ourTeamsList) && ourTeamsList.length > 0) {
+      const team = event.team || event.TEAM || event.extra_data?.EQUIPO || event.extra_data?.TEAM || '';
+      const normTeam = String(team || '').toLowerCase().trim();
+      const ours = ourTeamsList.some((t: string) => t && normTeam === t.toLowerCase().trim());
+      if (normTeam) return !ours;
+    }
+
+    if (matchInfo) {
+      const oppNames = [
+        matchInfo.OPPONENT,
+        matchInfo.opponent,
+        matchInfo.away,
+        matchInfo.away_team,
+        matchInfo.opponent_name,
+      ].filter(Boolean).map((s: string) => String(s).toLowerCase().trim());
+      const team = String(event.team || event.TEAM || event.extra_data?.EQUIPO || '').toLowerCase().trim();
+      if (team && oppNames.includes(team)) return true;
+    }
+
     const equipo = event.extra_data?.EQUIPO || '';
     if (String(equipo).toUpperCase() === 'RIVAL') return true;
     
@@ -69,7 +88,13 @@ const LineoutTeamChart = ({ events, onChartClick }) => {
     if (elements.length > 0 && onChartClick) {
       const chart = elements[0].element.$context.chart;
       const label = chart.data.labels[elements[0].index];
-      onChartClick(event, elements, chart, 'LINE', "set-pieces-tab", [{ descriptor: "CATEGORY", value: 'LINE' }]);
+      const isWin = String(label || '').toUpperCase().includes('GAN');
+      const filters = [
+        { descriptor: "CATEGORY", value: 'LINEOUT' },
+        { descriptor: "LINEOUT_RESULT", value: isWin ? 'WIN' : 'LOSE' },
+        { descriptor: "TEAM_SIDE", value: 'OUR_TEAM' },
+      ];
+      onChartClick(event, elements, chart, 'LINEOUT', "set-pieces-tab", filters);
     }
   };
 
@@ -78,8 +103,7 @@ const LineoutTeamChart = ({ events, onChartClick }) => {
     maintainAspectRatio: false,
     plugins: {
       legend: { 
-        display: true,
-        position: 'bottom' as const,
+        display: false,
       },
       title: { 
         display: true, 

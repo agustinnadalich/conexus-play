@@ -8,9 +8,11 @@ interface Props {
   title?: string;
   tabId?: string;
   onChartClick: (...args: any[]) => void;
+  skipCategoryFilter?: boolean;
+  compact?: boolean;
 }
 
-const PenaltiesPlayerBarChart: React.FC<Props> = ({ events, category = 'PENALTY', title = 'Penales por Jugador', tabId = 'penalties-tab', onChartClick }) => {
+const PenaltiesPlayerBarChart: React.FC<Props> = ({ events, category = 'PENALTY', title = 'Penales por Jugador', tabId = 'penalties-tab', onChartClick, skipCategoryFilter = false, compact = false }) => {
   const [chartData, setChartData] = useState<any>(null);
 
   useEffect(() => {
@@ -27,7 +29,7 @@ const PenaltiesPlayerBarChart: React.FC<Props> = ({ events, category = 'PENALTY'
     const aliases = category === 'FREE-KICK'
       ? ['FREE KICK', 'FREEKICK', 'FREE-KICK RIVAL', 'FREE KICK RIVAL', 'FREEKICK RIVAL']
       : [];
-    const penalEvents = events.filter(event => matchesCategory(event, category, aliases));
+    const penalEvents = skipCategoryFilter ? events : events.filter(event => matchesCategory(event, category, aliases));
     const playerLabels = [...new Set(penalEvents.map(getPlayerName).filter(p => p !== null))].sort();
     if (playerLabels.length === 0) {
       setChartData(null);
@@ -78,8 +80,10 @@ const PenaltiesPlayerBarChart: React.FC<Props> = ({ events, category = 'PENALTY'
     onClick: handleChartClick,
   };
 
+  const height = compact ? '280px' : '400px';
+
   return chartData ? (
-    <div style={{ height: '400px' }}>
+    <div style={{ height }}>
       <Bar data={chartData} options={chartOptions as any} />
     </div>
   ) : null;

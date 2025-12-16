@@ -17,9 +17,11 @@ interface PenaltiesTimeChartProps {
   events: any[];
   onFilter?: (filterFn: (event: any) => boolean) => void;
   onChartClick?: (...args: any[]) => void;
-  category?: string; // PENALTY / FREE-KICK
+  category?: string; // PENALTY / FREE-KICK / CARD
   title?: string;
   tabId?: string;
+  skipCategoryFilter?: boolean;
+  compact?: boolean;
 }
 
 const canonicalGroups = ["0'- 20'", "20'- 40'", "40'- 60'", "60'- 80'"];
@@ -94,11 +96,11 @@ const isOpponent = (event: any) => {
   return false;
 };
 
-const PenaltiesTimeChart: React.FC<PenaltiesTimeChartProps> = ({ events, onFilter, onChartClick, category = 'PENALTY', title = 'Penales por Bloque de Tiempo', tabId = 'penalties-tab' }) => {
+const PenaltiesTimeChart: React.FC<PenaltiesTimeChartProps> = ({ events, onFilter, onChartClick, category = 'PENALTY', title = 'Penales por Bloque de Tiempo', tabId = 'penalties-tab', skipCategoryFilter = false, compact = false }) => {
   const [chartData, setChartData] = useState<any>(null);
 
   useEffect(() => {
-    const penaltiesEvents = events.filter(e => matchesCategory(e, category));
+    const penaltiesEvents = skipCategoryFilter ? events : events.filter(e => matchesCategory(e, category));
     const teamCounts = canonicalGroups.map(group => penaltiesEvents.filter(event => getTimeGroupCanonical(event) === group && !isOpponent(event)).length);
     const rivalCounts = canonicalGroups.map(group => penaltiesEvents.filter(event => getTimeGroupCanonical(event) === group && isOpponent(event)).length);
     const labels = canonicalGroups.filter((_, index) => teamCounts[index] + rivalCounts[index] > 0);
@@ -178,8 +180,12 @@ const PenaltiesTimeChart: React.FC<PenaltiesTimeChartProps> = ({ events, onFilte
     onClick: handleBarClick,
   };
 
+  const containerStyle = compact
+    ? { minHeight: '200px', maxHeight: '280px' }
+    : { minHeight: '260px', maxHeight: '420px' };
+
   return (
-    <div style={{ minHeight: '260px', maxHeight: '420px' }}>
+    <div style={containerStyle}>
       <Bar data={chartData} options={options as any} />
     </div>
   );

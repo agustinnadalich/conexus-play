@@ -1,61 +1,80 @@
 import React from 'react';
 import { Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
+import { isOpponentEvent } from '@/utils/eventUtils';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
-const LineoutEffectivityChart = ({ events, title, onChartClick }) => {
+const LineoutEffectivityChart = ({ events, title, onChartClick, matchInfo, ourTeamsList }: any) => {
   // Extraer resultado desde extra_data.RESULTADO-LINE o LINE_RESULT
   const getResult = (event: any) => {
-    return event.extra_data?.['RESULTADO-LINE'] || event.extra_data?.LINE_RESULT || event.LINE_RESULT;
+    return event.extra_data?.['RESULTADO-LINE'] || event.extra_data?.LINE_RESULT || event.LINE_RESULT || event.extra_data?.RESULTADO_LINE;
   };
-  
+
   const isOpponent = (event: any) => {
-    const team = event.team || event.TEAM || event.extra_data?.EQUIPO || '';
-    const teamStr = String(team).toUpperCase().trim();
-    
-    if (event.IS_OPPONENT === true || event.extra_data?.IS_OPPONENT === true) return true;
-    if (event.IS_OPPONENT === 'true' || event.extra_data?.IS_OPPONENT === 'true') return true;
-    if (teamStr === 'OPPONENT' || teamStr === 'RIVAL' || teamStr === 'AWAY' || teamStr === 'VISITANTE') return true;
-    if (teamStr.includes('OPPONENT') || teamStr.includes('RIVAL') || teamStr.includes('AWAY')) return true;
-    
-    return false;
+    if (ourTeamsList && Array.isArray(ourTeamsList) && ourTeamsList.length > 0) {
+      const team = event.team || event.TEAM || event.extra_data?.EQUIPO || event.extra_data?.TEAM || '';
+      const normTeam = String(team || '').toLowerCase().trim();
+      const ours = ourTeamsList.some((t: string) => t && normTeam === t.toLowerCase().trim());
+      if (normTeam) return !ours;
+    }
+    if (matchInfo) {
+      const oppNames = [
+        matchInfo.OPPONENT,
+        matchInfo.opponent,
+        matchInfo.away,
+        matchInfo.away_team,
+        matchInfo.opponent_name,
+      ].filter(Boolean).map((s: string) => String(s).toLowerCase().trim());
+      const team = String(event.team || event.TEAM || event.extra_data?.EQUIPO || '').toLowerCase().trim();
+      if (team && oppNames.includes(team)) return true;
+    }
+    return isOpponentEvent(event);
   };
+
+  const normalizeResult = (result: any) => String(result ?? '').toUpperCase().trim();
+  const resultKey = (result: any) => normalizeResult(result).replace(/[\s_-]+/g, '');
   
+  const isWin = (result: any) => {
+    const norm = resultKey(result);
+    return (
+      norm.includes('CLEAN') ||
+      norm.includes('DIRTY') ||
+      norm.includes('WIN') ||
+      norm.includes('LIMPIA') ||
+      norm.includes('SUCIA')
+    );
+  };
+
+  const isLoss = (result: any) => {
+    const norm = resultKey(result);
+    return (
+      norm.includes('LOST') ||
+      norm.includes('NOTSTRAIGHT') ||
+      norm.includes('NOT-STRAIGHT') ||
+      norm.includes('LOSE') ||
+      norm.includes('STEAL')
+    );
+  };
+
   const teamWon = events.filter(event => {
     const result = getResult(event);
-    return !isOpponent(event) && result && (
-      String(result).toUpperCase().includes('CLEAN') || 
-      String(result).toUpperCase().includes('DIRTY') ||
-      String(result).toUpperCase().includes('WIN')
-    );
+    return !isOpponent(event) && isWin(result);
   }).length;
   
   const teamLost = events.filter(event => {
     const result = getResult(event);
-    return !isOpponent(event) && result && (
-      String(result).toUpperCase().includes('LOST') || 
-      String(result).toUpperCase().includes('NOT-STRAIGHT') ||
-      String(result).toUpperCase().includes('LOSE')
-    );
+    return !isOpponent(event) && isLoss(result);
   }).length;
   
   const rivalWon = events.filter(event => {
     const result = getResult(event);
-    return isOpponent(event) && result && (
-      String(result).toUpperCase().includes('CLEAN') || 
-      String(result).toUpperCase().includes('DIRTY') ||
-      String(result).toUpperCase().includes('WIN')
-    );
+    return isOpponent(event) && isWin(result);
   }).length;
   
   const rivalLost = events.filter(event => {
     const result = getResult(event);
-    return isOpponent(event) && result && (
-      String(result).toUpperCase().includes('LOST') || 
-      String(result).toUpperCase().includes('NOT-STRAIGHT') ||
-      String(result).toUpperCase().includes('LOSE')
-    );
+    return isOpponent(event) && isLoss(result);
   }).length;
   
   const totalTeam = teamWon + teamLost;

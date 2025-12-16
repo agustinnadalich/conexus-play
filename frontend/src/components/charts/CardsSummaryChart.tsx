@@ -13,17 +13,29 @@ const CardsSummaryChart: React.FC<Props> = ({ events, onChartClick }) => {
 
   useEffect(() => {
     // Eventos de tarjeta reales o penales con AVANCE codificando tarjeta
-    const isCard = (ev: any) =>
-      matchesCategory(ev, 'CARD', ['TARJETA', 'YELLOW-CARD', 'RED-CARD', 'AMARILLA', 'ROJA']) ||
-      normalizeBool(ev['YELLOW-CARD']) ||
-      normalizeBool(ev['RED-CARD']) ||
-      normalizeBool(ev?.extra_data?.['YELLOW-CARD']) ||
-      normalizeBool(ev?.extra_data?.['RED-CARD']) ||
-      matchesCategory(ev, 'PENALTY', ['PENAL']); // para derivar de AVANCE
+    const isCard = (ev: any) => {
+      const hasCardFlag = (val: any) => {
+        if (normalizeBool(val)) return true;
+        const s = String(val || '').trim();
+        return s.length > 0;
+      };
+
+      return (
+        matchesCategory(ev, 'CARD', ['TARJETA', 'YELLOW-CARD', 'RED-CARD', 'AMARILLA', 'ROJA']) ||
+        hasCardFlag(ev['YELLOW-CARD']) ||
+        hasCardFlag(ev['RED-CARD']) ||
+        hasCardFlag(ev?.extra_data?.['YELLOW-CARD']) ||
+        hasCardFlag(ev?.extra_data?.['RED-CARD']) ||
+        matchesCategory(ev, 'PENALTY', ['PENAL'])
+      ); // para derivar de AVANCE
+    };
 
     const cardType = (ev: any) => {
-      if (normalizeBool(ev['YELLOW-CARD']) || normalizeBool(ev?.extra_data?.['YELLOW-CARD'])) return 'YELLOW';
-      if (normalizeBool(ev['RED-CARD']) || normalizeBool(ev?.extra_data?.['RED-CARD'])) return 'RED';
+      const hasYellow = (val: any) => normalizeBool(val) || String(val || '').trim().length > 0;
+      const hasRed = (val: any) => normalizeBool(val) || String(val || '').trim().length > 0;
+
+      if (hasYellow(ev['YELLOW-CARD']) || hasYellow(ev?.extra_data?.['YELLOW-CARD'])) return 'YELLOW';
+      if (hasRed(ev['RED-CARD']) || hasRed(ev?.extra_data?.['RED-CARD'])) return 'RED';
       const raw =
         pickValue(ev, ['CARD_TYPE', 'CARD', 'TYPE', 'TARJETA', 'tipo_tarjeta', 'card_type', 'card']) ||
         ev?.category ||
@@ -88,8 +100,10 @@ const CardsSummaryChart: React.FC<Props> = ({ events, onChartClick }) => {
     // Intentar inferir jugador e infracción para ayudar en el filtro
     const matchingEvents = cardEventsMemo.filter(ev => {
       const t = (() => {
-        if (normalizeBool(ev['YELLOW-CARD']) || normalizeBool(ev?.extra_data?.['YELLOW-CARD'])) return 'YELLOW';
-        if (normalizeBool(ev['RED-CARD']) || normalizeBool(ev?.extra_data?.['RED-CARD'])) return 'RED';
+        const hasYellow = (val: any) => normalizeBool(val) || String(val || '').trim().length > 0;
+        const hasRed = (val: any) => normalizeBool(val) || String(val || '').trim().length > 0;
+        if (hasYellow(ev['YELLOW-CARD']) || hasYellow(ev?.extra_data?.['YELLOW-CARD'])) return 'YELLOW';
+        if (hasRed(ev['RED-CARD']) || hasRed(ev?.extra_data?.['RED-CARD'])) return 'RED';
         const raw =
           pickValue(ev, ['CARD_TYPE', 'CARD', 'TYPE', 'TARJETA', 'tipo_tarjeta', 'card_type', 'card']) ||
           ev?.category ||

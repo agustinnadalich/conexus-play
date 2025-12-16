@@ -33,6 +33,7 @@ const EventEditor: React.FC = () => {
   const [bulkExtraKey, setBulkExtraKey] = useState("");
   const [bulkExtraValue, setBulkExtraValue] = useState("");
   const [extraFilters, setExtraFilters] = useState<Record<string, string>>({});
+  const [selectedRowId, setSelectedRowId] = useState<number | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -348,10 +349,17 @@ const EventEditor: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredRows.map((ev) => {
+              {filteredRows.map((ev, idx) => {
                 const e = edited[ev.id] || {};
+                const isSelected = selectedRowId === ev.id;
+                const zebra = idx % 2 === 0 ? "bg-white" : "bg-gray-100";
+                const rowClass = isSelected ? "bg-gray-300" : zebra;
                 return (
-                  <tr key={ev.id} className="border-t">
+                  <tr
+                    key={ev.id}
+                    className={`border-t ${rowClass}`}
+                    onClick={() => setSelectedRowId(ev.id)}
+                  >
                     <td className="px-2 py-1">{ev.id}</td>
                     <td className="px-2 py-1">
                       <input

@@ -23,12 +23,21 @@ const TurnoversTypeChart = ({ events, onChartClick }: any) => {
       event.TURNOVER_TYPE,
       event.extra_data?.type,
       event.type,
+      event.extra_data?.TURNOVER_CAUSE,
+      event.extra_data?.['TURNOVER-CAUSE'],
+      event.extra_data?.TURNOVER_REASON,
+      event.extra_data?.CAUSE,
+      event.extra_data?.MOTIVO,
+      event.extra_data?.MISC,
     ];
     for (const candidate of candidates) {
       if (candidate === undefined || candidate === null) continue;
-      const normalized = String(candidate).trim();
-      if (!normalized) continue;
-      return normalized.toUpperCase();
+      const normalized = String(candidate).trim().toUpperCase();
+      if (!normalized || normalized === 'N/A' || normalized === 'NA' || normalized === 'NONE') continue;
+      if (normalized === 'NOT SPECIFIED' || normalized === 'SIN ESPECIFICAR' || normalized === 'NO ESPECIFICADO' || normalized === 'UNSPECIFIED') {
+        return 'SIN ESPECIFICAR';
+      }
+      return normalized;
     }
     return 'SIN ESPECIFICAR';
   };

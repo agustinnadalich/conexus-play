@@ -42,6 +42,20 @@ const TriesOriginChart = ({ events, onChartClick }) => {
     return '';
   };
 
+  const ORIGIN_CATEGORIES = ["TURNOVER", "SCRUM", "LINEOUT", "KICKOFF", "OTROS"];
+
+  const normalizeOrigin = (raw: any) => {
+    if (!raw && raw !== 0) return 'OTROS';
+    const s = String(raw).toUpperCase().trim();
+    if (s === '' || s === 'RC') return 'OTROS';
+    if (s.includes('SCRUM')) return 'SCRUM';
+    if (s.includes('LINE')) return 'LINEOUT';
+    if (s.includes('KICK')) return 'KICKOFF';
+    if (s.includes('TURN')) return 'TURNOVER';
+    if (s === 'OTROS' || s === 'OTHER' || s === 'OTRO') return 'OTROS';
+    return ORIGIN_CATEGORIES.includes(s) ? s : 'OTROS';
+  };
+
   useEffect(() => {
     if (!events || events.length === 0) {
       setTriesOriginChartData(null);
@@ -56,7 +70,7 @@ const TriesOriginChart = ({ events, onChartClick }) => {
     });
     console.log("Eventos de tries:", triesEvents.length);
 
-  const originCategories = ["TURNOVER", "SCRUM", "LINEOUT", "KICKOFF", "OTROS"];
+  const originCategories = ORIGIN_CATEGORIES;
 
     const originCounts: any = originCategories.reduce((acc: any, category: any) => {
       acc[category] = 0;
@@ -71,19 +85,6 @@ const TriesOriginChart = ({ events, onChartClick }) => {
     const teamPhasesCount: any = originCategories.reduce((acc: any, c: any) => { acc[c] = 0; return acc; }, {});
     const oppPhasesSum: any = originCategories.reduce((acc: any, c: any) => { acc[c] = 0; return acc; }, {});
     const oppPhasesCount: any = originCategories.reduce((acc: any, c: any) => { acc[c] = 0; return acc; }, {});
-
-    const normalizeOrigin = (raw: any) => {
-      if (!raw && raw !== 0) return 'OTROS';
-      const s = String(raw).toUpperCase().trim();
-      if (s === '' || s === 'RC') return 'OTROS';
-      if (s.includes('SCRUM')) return 'SCRUM';
-      if (s.includes('LINE')) return 'LINEOUT';
-      if (s.includes('KICK')) return 'KICKOFF';
-      if (s.includes('TURN')) return 'TURNOVER';
-      if (s === 'OTROS' || s === 'OTHER' || s === 'OTRO') return 'OTROS';
-      // fallback if unknown
-      return originCategories.includes(s) ? s : 'OTROS';
-    };
 
     triesEvents.forEach((tryEvent, idx) => {
       // Buscar origen en múltiples campos posibles
@@ -182,13 +183,13 @@ const TriesOriginChart = ({ events, onChartClick }) => {
     const filteredEvents = events.filter(ev => {
       const pt = getPointType(ev);
       let origin = ev.TRY_ORIGIN || ev.extra_data?.TRY_ORIGIN || ev.extra_data?.ORIGIN || ev.ORIGIN;
-      if (!origin || origin === "RC") origin = "OTROS";
+      origin = normalizeOrigin(origin);
       return pt && pt.includes('TRY') && origin === label;
     });
 
     // Descriptor básico de origen: usar la clave TRY_ORIGIN para que ChartsTabs la encuentre
     const additionalFilters = [
-      { descriptor: "event_type", value: "POINTS" }, 
+      { descriptor: "CATEGORY", value: "POINTS" },
       { descriptor: "TRY_ORIGIN", value: label }
     ];
 
