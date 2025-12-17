@@ -6,7 +6,6 @@ import {
 } from "@/components/ui/tabs";
 import { useEffect } from "react";
 import {
-  OverviewTabContent,
   PossessionTabContent,
   TacklesTabContent,
   PointsTabContent,
@@ -944,10 +943,9 @@ const ChartsTabs = (_props: any) => {
   } catch (err) {}
 
   return (
-    <Tabs defaultValue="overview" className="w-full mt-4">
+    <Tabs defaultValue="possession" className="w-full mt-4">
       <div style={{ width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
         <TabsList style={{ display: 'inline-flex', whiteSpace: 'nowrap', boxSizing: 'border-box' }}>
-          <TabsTrigger style={{ display: 'inline-flex', flex: '0 0 auto', minWidth: 110 }} value="overview">Resumen</TabsTrigger>
           <TabsTrigger style={{ display: 'inline-flex', flex: '0 0 auto', minWidth: 110 }} value="possession">Posesión</TabsTrigger>
           <TabsTrigger style={{ display: 'inline-flex', flex: '0 0 auto', minWidth: 110 }} value="tackles">Tackles</TabsTrigger>
           <TabsTrigger style={{ display: 'inline-flex', flex: '0 0 auto', minWidth: 110 }} value="points" disabled={!hasPoints}>Points</TabsTrigger>
@@ -1006,10 +1004,6 @@ const ChartsTabs = (_props: any) => {
         </div>
       )}
       
-
-      <TabsContent value="overview">
-        <OverviewTabContent effectiveEvents={effectiveEvents} />
-      </TabsContent>
 
       <TabsContent value="possession">
         <PossessionTabContent

@@ -1,12 +1,12 @@
 
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import AnalysisPage from "./pages/AnalysisPage";
-import AnalysisPageNeo from "./pages/AnalysisPageNeo";
 import ImportMatch from "@/pages/ImportMatch";
 import PreviewImport from "@/pages/PreviewImport";
 import MatchesAdmin from "@/pages/MatchesAdmin";
+import EditMatch from "@/pages/EditMatch";
 import CreateProfile from "@/pages/CreateProfile";
 import MappingsAdmin from "@/pages/MappingsAdmin";
 import MultiMatchReportPage from "./pages/MultiMatchReportPage";
@@ -18,10 +18,10 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/analysis/:matchId" element={<AnalysisPage />} />
-        <Route path="/analysis-neo/:matchId" element={<AnalysisPageNeo />} />
         <Route path="/match/:matchId" element={<AnalysisPage />} />
         <Route path="/multi-match-report" element={<MultiMatchReportPage />} />
         <Route path="/admin/matches" element={<MatchesAdmin />} />
+        <Route path="/admin/matches/:id/edit" element={<EditMatch />} />
         <Route path="/admin/mappings" element={<MappingsAdmin />} />
         <Route path="/import" element={<ImportMatch />} />
         <Route path="/preview" element={<PreviewImport />} />

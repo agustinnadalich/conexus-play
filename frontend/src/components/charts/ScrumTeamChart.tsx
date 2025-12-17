@@ -86,25 +86,26 @@ const ScrumTeamChart = ({ events, onChartClick }) => {
   const centerTextPlugin = {
     id: 'centerTextTeam',
     beforeDraw: (chart) => {
-      const { width, height, ctx } = chart;
+      const { ctx, chartArea } = chart;
+      if (!chartArea) return;
+      const { left, top, width, height } = chartArea;
+      const centerX = left + width / 2;
+      const centerY = top + height / 2;
       ctx.restore();
 
       const fontSize = height / 180;
       ctx.font = `bold ${fontSize.toFixed(2)}em sans-serif`;
+      ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillStyle = '#059669';
 
       const text = `${effectiveness}%`;
-      const textX = Math.round((width - ctx.measureText(text).width) / 2);
-      const textY = height / 2;
-      
-      ctx.fillText(text, textX, textY);
+      ctx.fillText(text, centerX, centerY);
       
       ctx.font = `${(fontSize * 0.6).toFixed(2)}em sans-serif`;
       ctx.fillStyle = '#6b7280';
       const subText = `Efectividad`;
-      const subTextX = Math.round((width - ctx.measureText(subText).width) / 2);
-      ctx.fillText(subText, subTextX, textY + 20);
+      ctx.fillText(subText, centerX, centerY + 20);
 
       ctx.save();
     },

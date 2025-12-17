@@ -2,8 +2,8 @@ import React, { useEffect, useState, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import MultiMatchHeader from "../components/MultiMatchHeader";
 import Charts from "../components/Charts";
-import Carousel from "../components/Carousel";
 import VideoPlayer from "../components/VideoPlayer";
+import Layout from "@/components/Layout";
 
 const MultiMatchReportPage = () => {
   const location = useLocation();
@@ -95,39 +95,48 @@ const MultiMatchReportPage = () => {
   }, []);
 
   return (
-    <div>
-      <MultiMatchHeader
-        matches={matches}
-        selectedMatchIds={selectedMatchIds}
-        onToggleMatch={handleToggleMatch}
-      />
-      <div style={{ margin: "20px 0" }}>
-        {currentEvent && (
-          <VideoPlayer
-            src={videoSrc}
-            tempTime={currentEvent.SECOND}
-            duration={currentEvent.DURATION}
-            isPlayingFilteredEvents={false}
-            onTimeUpdate={() => {}}
-            onEnd={() => {}}
-            onStop={() => setCurrentEvent(null)}
-            onNext={() => {}}
-            onPrevious={() => {}}
-            onPlayFilteredEvents={() => {}}
-          />
-        )}
-      </div>
-      <div className="charts-container">
-        <Charts
-          events={allEvents}
-          filteredEvents={filteredEvents}
-          setFilteredEvents={setFilteredEvents}
-          filterDescriptors={filterDescriptors}
-          setFilterDescriptors={setFilterDescriptors}
-          onEventClick={handleEventClick}
+    <Layout
+      title="Reporte MultiMatch"
+      subtitle="Compará eventos entre varios partidos en una sola vista"
+      breadcrumbs={[
+        { label: "Dashboard", to: "/dashboard" },
+        { label: "MultiMatch" },
+      ]}
+    >
+      <div className="space-y-6">
+        <MultiMatchHeader
+          matches={matches}
+          selectedMatchIds={selectedMatchIds}
+          onToggleMatch={handleToggleMatch}
         />
+        <div style={{ margin: "20px 0" }}>
+          {currentEvent && (
+            <VideoPlayer
+              src={videoSrc}
+              tempTime={currentEvent.SECOND}
+              duration={currentEvent.DURATION}
+              isPlayingFilteredEvents={false}
+              onTimeUpdate={() => {}}
+              onEnd={() => {}}
+              onStop={() => setCurrentEvent(null)}
+              onNext={() => {}}
+              onPrevious={() => {}}
+              onPlayFilteredEvents={() => {}}
+            />
+          )}
+        </div>
+        <div className="charts-container">
+          <Charts
+            events={allEvents}
+            filteredEvents={filteredEvents}
+            setFilteredEvents={setFilteredEvents}
+            filterDescriptors={filterDescriptors}
+            setFilterDescriptors={setFilterDescriptors}
+            onEventClick={handleEventClick}
+          />
+        </div>
       </div>
-    </div>
+    </Layout>
   );
 };
 

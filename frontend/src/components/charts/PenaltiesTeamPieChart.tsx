@@ -58,15 +58,21 @@ const PenaltiesTeamPieChart: React.FC<Props> = ({
   const centerTextPlugin = {
     id: 'penaltiesCenterText',
     afterDatasetsDraw(chart: any) {
-      const { ctx, chartArea: { width, height } } = chart;
+      const { ctx, chartArea } = chart;
+      if (!chartArea) return;
+      const meta = chart.getDatasetMeta?.(0);
+      const firstArc = meta?.data?.[0];
+      const centerX = firstArc?.x ?? chartArea.left + chartArea.width / 2;
+      const centerY = firstArc?.y ?? chartArea.top + chartArea.height / 2;
+
       ctx.save();
       ctx.font = 'bold 14px Arial';
       ctx.fillStyle = '#111827';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(`Nos: ${totals.our}`, width / 2, height / 2 - 10);
+      ctx.fillText(`Nos: ${totals.our}`, centerX, centerY - 10);
       ctx.fillStyle = '#dc2626';
-      ctx.fillText(`Rival: ${totals.opp}`, width / 2, height / 2 + 10);
+      ctx.fillText(`Rival: ${totals.opp}`, centerX, centerY + 10);
       ctx.restore();
     },
   };

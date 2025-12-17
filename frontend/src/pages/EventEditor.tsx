@@ -244,7 +244,7 @@ const EventEditor: React.FC = () => {
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-semibold">Editar eventos · Match {matchId}</h1>
         <div className="flex gap-2 items-center">
-          <Link className="text-blue-600 underline" to={`/analysis-neo/${matchId}`}>Volver a análisis</Link>
+          <Link className="text-blue-600 underline" to={`/analysis/${matchId}`}>Volver a análisis</Link>
           <button
             className="px-3 py-1 bg-blue-600 text-white rounded"
             onClick={handleSave}

@@ -11,7 +11,7 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import { useEvents } from "@/hooks/useEvents";
 import { FilterProvider, useFilterContext } from "@/context/FilterContext";
 import { PlaybackProvider, usePlayback } from "@/context/PlaybackContext";
-import { FiFilter, FiX } from "react-icons/fi";
+import { FiEdit3, FiFilter, FiX } from "react-icons/fi";
 import { cn } from "@/lib/utils";
 
 const AnalysisPageContent = () => {
@@ -42,7 +42,7 @@ const AnalysisPageContent = () => {
 
   if (isLoading) {
     return (
-      <Layout>
+      <Layout hideHeader noPadding>
         <div className="flex items-center justify-center h-64">
           <p>Cargando eventos del partido...</p>
         </div>
@@ -52,7 +52,7 @@ const AnalysisPageContent = () => {
 
   if (error) {
     return (
-      <Layout>
+      <Layout hideHeader noPadding>
         <div className="flex items-center justify-center h-64">
           <p className="text-red-500">Error al cargar los eventos: {error.message}</p>
         </div>
@@ -62,13 +62,17 @@ const AnalysisPageContent = () => {
 
   const matchInfoAny: any = data?.match_info;
   const videoUrl = matchInfoAny?.VIDEO_URL || matchInfoAny?.video || "";
+  const matchTitle = matchInfoAny
+    ? `${matchInfoAny?.team_name || matchInfoAny?.TEAM || "Equipo"} vs ${matchInfoAny?.opponent_name || matchInfoAny?.OPPONENT || "Rival"}`
+    : "Análisis del partido";
+  const breadcrumbText = `Home / Análisis: ${matchTitle || `Partido ${matchId}`}`;
 
   return (
-    <Layout>
+    <Layout hideHeader noPadding>
       {/* Sidebar */}
       <div
         className={cn(
-          "fixed top-0 left-0 h-full bg-white border-r shadow-md z-40 w-64 transition-transform duration-300",
+          "fixed left-0 top-0 z-40 h-full w-64 border-r bg-white shadow-md transition-transform duration-300",
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -82,62 +86,73 @@ const AnalysisPageContent = () => {
         <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
       </div>
 
+      {/* Botón flotante de filtros */}
+
+      <button
+        className="mr-2 p-2 rounded hover:bg-gray-200 fixed left-2 top-14 z-30 border-slate-300 bg-white text-slate-800 shadow-lg transition hover:bg-slate-50 md:left-4 md:top-16"
+        onClick={() => setSidebarOpen((v) => !v)}
+        title={sidebarOpen ? "Ocultar filtros" : "Mostrar filtros"}
+      >
+        <FiFilter size={22} />
+      </button>
+
       {/* Main content */}
-      <div className={cn("flex-1 transition-all duration-300", sidebarOpen ? "ml-64" : "")}>
-        <div className="p-0 sm:p-4">
-          <div className="mb-4 flex items-center">
-            {/* Botón de mostrar sidebar */}
-            {!sidebarOpen && (
-              <button
-                className="mr-2 p-2 rounded hover:bg-gray-200"
-                onClick={() => setSidebarOpen(true)}
-                title="Mostrar filtros"
-              >
-                <FiFilter size={22} />
-              </button>
-            )}
-            <HeaderPartido />
-            <div className="ml-auto flex gap-2">
-              <Link
-                to={`/analysis-neo/${matchId}`}
-                className="px-3 py-2 rounded-lg border border-indigo-200 text-indigo-700 hover:bg-indigo-50 text-sm"
-              >
-                Vista futurista
-              </Link>
-              <Link
-                to="/multi-match-report"
-                className="px-3 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 text-sm"
-              >
-                MultiMatch
-              </Link>
+      <div
+        className={cn(
+          "flex-1 transition-all duration-300",
+          sidebarOpen ? "ml-64" : ""
+        )}
+      >
+        <div className="px-2 pb-8 pt-4 sm:px-4 sm:pt-6">
+          <div className="mb-4 flex flex-wrap items-start gap-3 justify-between">
+            <div className="flex flex-col gap-2 w-full">
+              <div className="flex items-center justify-between text-xs font-medium text-slate-500">
+                <Link
+                  to="/dashboard"
+                  className="text-slate-700 hover:text-slate-900"
+                >
+                  {breadcrumbText}
+                </Link>
+                <Link
+                  to={`/analysis/${matchId}/edit-events`}
+                  className="text-xs font-semibold text-red-600 hover:text-red-700"
+                  title="Editar eventos"
+                >
+                  Editar Eventos
+                </Link>
+              </div>
+              <div className="w-full">
+                <HeaderPartido />
+              </div>
             </div>
           </div>
-            <div className="flex flex-col gap-4">
-              <VideoPlayer videoUrl={videoUrl} />
 
-              <ErrorBoundary>
-                <TimelineChart
-                  filteredEvents={filteredEvents}
-                  onEventClick={playEvent}
+          <div className="flex flex-col gap-4">
+            <VideoPlayer videoUrl={videoUrl} />
+
+            <ErrorBoundary>
+              <TimelineChart
+                filteredEvents={filteredEvents}
+                onEventClick={playEvent}
+              />
+            </ErrorBoundary>
+            <ErrorBoundary>
+              <ChartsTabs
+                onEventClick={setSelectedEvent}
+                currentTime={currentTime}
+              />
+            </ErrorBoundary>
+
+            {/* Mapa de cancha debajo de los tabs */}
+            <ErrorBoundary>
+              <div className="mt-6">
+                <FieldMapChart
+                  events={filteredEvents}
+                  matchInfo={data?.match_info || {}}
                 />
-              </ErrorBoundary>
-              <ErrorBoundary>
-                <ChartsTabs
-                  onEventClick={setSelectedEvent}
-                  currentTime={currentTime}
-                />
-              </ErrorBoundary>
-              
-              {/* Mapa de cancha debajo de los tabs */}
-              <ErrorBoundary>
-                <div className="mt-6">
-                  <FieldMapChart 
-                    events={filteredEvents} 
-                    matchInfo={data?.match_info || {}} 
-                  />
-                </div>
-              </ErrorBoundary>
-            </div>
+              </div>
+            </ErrorBoundary>
+          </div>
         </div>
       </div>
     </Layout>

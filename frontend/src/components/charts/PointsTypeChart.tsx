@@ -240,15 +240,37 @@ const PointsTypeChart = ({ events, onChartClick }) => {
     onClick: handleChartClick,
   };
 
+  const centerTextPlugin = {
+    id: 'centerTextPointsType',
+    afterDatasetsDraw(chart: any) {
+      const { ctx, chartArea } = chart;
+      if (!chartArea) return;
+      const meta = chart.getDatasetMeta?.(0);
+      const firstArc = meta?.data?.[0];
+      const centerX = firstArc?.x ?? chartArea.left + chartArea.width / 2;
+      const centerY = firstArc?.y ?? chartArea.top + chartArea.height / 2;
+
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = 'bold 18px Arial';
+      ctx.fillStyle = 'rgba(255, 99, 132, 1)';
+      ctx.fillText(`${totalRivalPoints}`, centerX, centerY - 10);
+      ctx.fillStyle = 'rgba(54, 162, 235, 1)';
+      ctx.fillText(`${totalTeamPoints}`, centerX, centerY + 10);
+      ctx.restore();
+    },
+  };
+
   return (
     <div className="relative w-full h-full max-w-full overflow-hidden flex items-center justify-center">
       <div className="w-full h-full max-h-52 sm:max-h-80 flex items-center justify-center">
-        <Doughnut data={data} options={pieChartOptions as any} plugins={[ChartDataLabels]} style={{ maxHeight: '100%', maxWidth: '100%', height: '100%', width: '100%' }} />
-      </div>
-      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
-        <span className="text-[1.25rem] text-[rgba(255,99,132,1)]">{totalRivalPoints}</span>
-        <span className="text-[1.25rem] mx-1"> / </span>
-        <span className="text-[1.25rem] text-[rgba(54,162,235,1)]">{totalTeamPoints}</span>
+        <Doughnut
+          data={data}
+          options={pieChartOptions as any}
+          plugins={[ChartDataLabels, centerTextPlugin]}
+          style={{ maxHeight: '100%', maxWidth: '100%', height: '100%', width: '100%' }}
+        />
       </div>
     </div>
   );

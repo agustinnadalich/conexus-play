@@ -38,7 +38,7 @@ const AnalysisPageNeoContent = () => {
 
   if (isLoading) {
     return (
-      <Layout>
+      <Layout hideHeader noPadding>
         <div className="neo-shell neo-grid-lines">
           <div className="p-8 text-center text-slate-200">Cargando análisis avanzado...</div>
         </div>
@@ -48,7 +48,7 @@ const AnalysisPageNeoContent = () => {
 
   if (error) {
     return (
-      <Layout>
+      <Layout hideHeader noPadding>
         <div className="neo-shell neo-grid-lines">
           <div className="p-8 text-center text-red-300">
             Error al cargar los eventos: {error.message}
@@ -63,9 +63,37 @@ const AnalysisPageNeoContent = () => {
   const totalEvents = filteredEvents?.length || 0;
   const breakEvents = filteredEvents.filter((ev: any) => (ev.event_type || ev.CATEGORY) === "BREAK").length;
   const tackleEvents = filteredEvents.filter((ev: any) => (ev.event_type || ev.CATEGORY) === "TACKLE").length;
+  const matchTitle = `${matchInfoAny?.team_name || matchInfoAny?.TEAM || "Equipo"} vs ${matchInfoAny?.opponent_name || matchInfoAny?.OPPONENT || "Rival"}`;
+  const breadcrumbs = [
+    { label: "Dashboard", to: "/dashboard" },
+    { label: "Análisis" },
+    { label: matchTitle },
+  ];
 
   return (
-    <Layout>
+    <Layout
+      title={matchTitle}
+      subtitle="Vista futurista (en pausa)"
+      breadcrumbs={breadcrumbs}
+      actions={
+        <div className="flex items-center gap-2">
+          <Link
+            to={`/analysis/${matchId}`}
+            className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            Volver a vista clásica
+          </Link>
+          <Link
+            to="/multi-match-report"
+            className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            MultiMatch
+          </Link>
+        </div>
+      }
+      noPadding
+      hideHeader
+    >
       <div className="neo-shell neo-grid-lines">
         <div className="neo-ring right" />
         <div className="neo-ring left" />

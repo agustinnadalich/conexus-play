@@ -97,11 +97,14 @@ const LineBreaksResultChart = ({ events, onChartClick }: any) => {
   const centerTextPlugin = {
     id: 'centerTextBreaksResult',
     afterDatasetsDraw(chart: any) {
-      const { ctx, chartArea: { width, height } } = chart;
+      const { ctx, chartArea } = chart;
+      if (!chartArea) return;
+      const meta = chart.getDatasetMeta?.(0);
+      const firstArc = meta?.data?.[0];
+      const centerX = firstArc?.x ?? chartArea.left + chartArea.width / 2;
+      const centerY = firstArc?.y ?? chartArea.top + chartArea.height / 2;
       ctx.save();
-      const centerX = width / 2;
-      const centerY = height / 2;
-      
+
       ctx.font = 'bold 20px Arial';
       ctx.fillStyle = '#374151';
       ctx.textAlign = 'center';

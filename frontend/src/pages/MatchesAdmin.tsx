@@ -134,37 +134,7 @@ const MatchesAdmin = () => {
     };
 
     const handleEdit = (match: Match) => {
-    setEditingMatch(match);
-    setSelectedProfile(match.import_profile_name || "");
-    setGlobalDelay(match.global_delay_seconds || 0);
-    setEventDelays(match.event_delays || {});
-
-    // Cargar tipos de eventos disponibles para este partido
-    fetchEventTypes(match.id);
-
-    // Determinar automáticamente si el perfil es manual basado en sus settings
-    if (match.import_profile_name) {
-        const profile = profiles.find(p => p.name === match.import_profile_name);
-        if (profile && (profile.settings?.manual_period_times || profile.settings?.time_mapping?.manual_times)) {
-            setTimeMethod("manual");
-            // Para perfiles manuales, cargar los tiempos desde la metadata del partido
-            if (match.manual_period_times) {
-                setManualTimes(match.manual_period_times);
-            } else {
-                // Valores por defecto si no hay tiempos guardados en el partido
-                setManualTimes({
-                    kick_off_1: 0,
-                    end_1: 2400,
-                    kick_off_2: 2700,
-                    end_2: 4800
-                });
-            }
-        } else {
-            setTimeMethod("profile");
-        }
-    } else {
-        setTimeMethod("profile");
-    }
+      navigate(`/admin/matches/${match.id}/edit`);
     };
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>, key: string) => {

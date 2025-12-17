@@ -73,11 +73,14 @@ const PenaltiesCausePieChart = ({ events, onChartClick }: any) => {
   const centerTextPlugin = {
     id: 'centerText',
     afterDatasetsDraw(chart: any) {
-      const { ctx, chartArea: { width, height } } = chart;
+      const { ctx, chartArea } = chart;
+      if (!chartArea) return;
+      const meta = chart.getDatasetMeta?.(0);
+      const firstArc = meta?.data?.[0];
+      const centerX = firstArc?.x ?? chartArea.left + chartArea.width / 2;
+      const centerY = firstArc?.y ?? chartArea.top + chartArea.height / 2;
       ctx.save();
-      const centerX = width / 2;
-      const centerY = height / 2;
-      
+
       ctx.font = 'bold 16px Arial';
       ctx.fillStyle = '#dc2626';
       ctx.textAlign = 'center';

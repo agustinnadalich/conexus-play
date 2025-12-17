@@ -93,28 +93,29 @@ const ScrumEffectivityChart = ({ events, title, onChartClick }) => {
   const centerTextPlugin = {
     id: 'centerText',
     beforeDraw: (chart) => {
-      const { width } = chart;
-      const { height } = chart;
-      const ctx = chart.ctx;
+      const { ctx, chartArea } = chart;
+      if (!chartArea) return;
+      const { left, top, width, height } = chartArea;
+      const centerX = left + width / 2;
+      const centerY = top + height / 2;
       ctx.restore();
 
       // Texto para Equipo
       const labelFontSize = (height / 500).toFixed(2);
       ctx.font = `bold ${labelFontSize}em sans-serif`;
+      ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillStyle = '#1e40af';
 
       const labelTextTeam = `Equipo: ${effectivenessTeam}%`;
-      const labelXTeam = Math.round((width - ctx.measureText(labelTextTeam).width) / 2);
-      const labelYTeam = height / 2 - 12;
-      ctx.fillText(labelTextTeam, labelXTeam, labelYTeam);
+      const labelYTeam = centerY - 12;
+      ctx.fillText(labelTextTeam, centerX, labelYTeam);
 
       // Texto para Rival
       ctx.fillStyle = '#dc2626';
       const labelTextRival = `Rival: ${effectivenessRival}%`;
-      const labelXRival = Math.round((width - ctx.measureText(labelTextRival).width) / 2);
-      const labelYRival = height / 2 + 12;
-      ctx.fillText(labelTextRival, labelXRival, labelYRival);
+      const labelYRival = centerY + 12;
+      ctx.fillText(labelTextRival, centerX, labelYRival);
 
       ctx.save();
     },
