@@ -113,14 +113,15 @@ const Sidebar = React.memo(({ sidebarOpen, setSidebarOpen }: { sidebarOpen: bool
     return result;
   }, [events, selectedTeam, filterCategory, filterDescriptors]);
   
-  const allDescriptors = useMemo(() => (
-    Array.from(
+  const allDescriptors = useMemo(() => {
+    const sourceEvents = computedFilteredEvents.length > 0 ? computedFilteredEvents : events;
+    return Array.from(
       new Set([
-        ...computedFilteredEvents.flatMap(ev => ev.extra_data ? Object.keys(ev.extra_data) : []),
-        ...camposExtra.filter(key => computedFilteredEvents.some(ev => ev[key] !== undefined && ev[key] !== null))
+        ...sourceEvents.flatMap(ev => ev.extra_data ? Object.keys(ev.extra_data) : []),
+        ...camposExtra.filter(key => sourceEvents.some(ev => ev[key] !== undefined && ev[key] !== null))
       ])
-    )
-  ), [computedFilteredEvents, camposExtra]);
+    );
+  }, [computedFilteredEvents, camposExtra, events]);
 
   const [selectedDescriptor, setSelectedDescriptor] = useState<string>("");
   // console.log("Selected Descriptor:", selectedDescriptor);
@@ -146,15 +147,15 @@ const Sidebar = React.memo(({ sidebarOpen, setSidebarOpen }: { sidebarOpen: bool
 
   const descriptorValues = useMemo(() => {
     if (!selectedDescriptor) return [];
+    const sourceEvents = computedFilteredEvents.length > 0 ? computedFilteredEvents : events;
     return Array.from(
       new Set(
-        computedFilteredEvents
+        sourceEvents
           .flatMap(ev => {
             const value = ev.extra_data && selectedDescriptor in ev.extra_data
               ? ev.extra_data[selectedDescriptor]
               : ev[selectedDescriptor];
 
-            // Si el valor es un array (como JUGADOR: ["13", "20"]), extraer cada elemento
             if (Array.isArray(value)) {
               return value;
             }
@@ -164,7 +165,7 @@ const Sidebar = React.memo(({ sidebarOpen, setSidebarOpen }: { sidebarOpen: bool
           .filter(v => v !== undefined && v !== null && v !== "None")
       )
     );
-  }, [computedFilteredEvents, selectedDescriptor]);
+  }, [computedFilteredEvents, selectedDescriptor, events]);
 
   useEffect(() => {
     let result = [...events];

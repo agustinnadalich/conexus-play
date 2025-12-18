@@ -122,6 +122,113 @@ def get_match_events(match_id):
         db.close()
 
 
+@match_events_bp.route('/matches/events', methods=['GET'])
+def get_multi_match_events():
+    """
+    Devuelve eventos de múltiples partidos en una sola respuesta.
+    Query params: match_ids=1,2,3 o match_id=1&match_id=2
+    Cada evento se enriquece con metadata del partido (label, video_url).
+    """
+    raw_ids = request.args.getlist('match_id') + request.args.getlist('match_ids')
+    match_ids = []
+    for rid in raw_ids:
+        # Permitir "1,2,3" y valores sueltos
+        parts = str(rid).split(',')
+        for p in parts:
+            try:
+                match_ids.append(int(p))
+            except ValueError:
+                continue
+
+    if not match_ids:
+        return jsonify({"error": "Debe enviar al menos un match_id"}), 400
+
+    db = SessionLocal()
+    try:
+        # Obtener info de los partidos
+        matches = db.query(Match).filter(Match.id.in_(match_ids)).all()
+        if not matches:
+            return jsonify({"events": [], "matches": []}), 200
+
+        match_meta = {}
+        for m in matches:
+            team_name = m.team.name if m.team else (m.team_id or None)
+            opponent_name = m.opponent_name
+            label = f"{team_name} vs {opponent_name}" if team_name or opponent_name else f"Partido {m.id}"
+            match_meta[m.id] = {
+                "id": m.id,
+                "team": team_name,
+                "opponent": opponent_name,
+                "label": label,
+                "date": m.date.isoformat() if m.date else None,
+                "video_url": m.video_url,
+            }
+
+        # Obtener eventos de todos los partidos seleccionados
+        events = (
+            db.query(Event)
+            .filter(Event.match_id.in_(match_meta.keys()))
+            .order_by(Event.timestamp_sec)
+            .all()
+        )
+
+        events_data = []
+        for event in events:
+            safe_extra_data = safe_serialize(event.extra_data) if event.extra_data is not None else {}
+            timestamp_sec = safe_serialize(event.timestamp_sec)
+            game_time = safe_extra_data.get("Game_Time", "00:00") if isinstance(safe_extra_data, dict) else "00:00"
+            period = safe_extra_data.get("DETECTED_PERIOD", 1) if isinstance(safe_extra_data, dict) else 1
+            try:
+                period = int(period)
+            except (ValueError, TypeError):
+                period = 1
+
+            players_raw = safe_extra_data.get("PLAYER") or safe_extra_data.get("PLAYERS") if isinstance(safe_extra_data, dict) else None
+            if players_raw:
+                if isinstance(players_raw, str):
+                    players_list = [players_raw]
+                elif isinstance(players_raw, list):
+                    players_list = players_raw
+                else:
+                    players_list = None
+            else:
+                players_list = None
+
+            m_meta = match_meta.get(event.match_id, {})
+
+            event_dict = {
+                "id": event.id,
+                "match_id": event.match_id,
+                "match_label": m_meta.get("label"),
+                "match_team": m_meta.get("team"),
+                "match_opponent": m_meta.get("opponent"),
+                "video_url": m_meta.get("video_url"),
+                "event_type": event.event_type,
+                "timestamp_sec": timestamp_sec,
+                "Game_Time": game_time,
+                "game_time": game_time,
+                "players": players_list,
+                "x": safe_serialize(event.x),
+                "y": safe_serialize(event.y),
+                "team": safe_extra_data.get("EQUIPO") if isinstance(safe_extra_data, dict) else None,
+                "period": period,
+                "extra_data": safe_extra_data,
+            }
+            events_data.append(event_dict)
+
+        return jsonify({
+            "events": events_data,
+            "matches": list(match_meta.values())
+        }), 200
+    except Exception as e:
+        print(f"Error obteniendo eventos multi: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": "Error interno del servidor"}), 500
+    finally:
+        db.close()
+
+
 def calcular_origen_tries(df):
     if 'POINTS' not in df.columns:
         df['POINTS'] = df['extra_data'].apply(lambda x: x.get('POINTS'))

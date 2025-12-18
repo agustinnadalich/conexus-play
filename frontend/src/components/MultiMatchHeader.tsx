@@ -1,21 +1,38 @@
 import React from "react";
 
-const MultiMatchHeader = ({ matches, selectedMatchIds, onToggleMatch }) => (
-  <div style={{ padding: "10px", background: "#eee", borderBottom: "1px solid #ccc" }}>
-    <h2>Selecciona los partidos a mostrar:</h2>
-    <div style={{ display: "flex", flexWrap: "wrap", gap: "15px" }}>
-      {matches.map((match) => (
-        <label key={match.ID_MATCH} style={{ display: "flex", alignItems: "center" }}>
-          <input
-            type="checkbox"
-            checked={selectedMatchIds.includes(match.ID_MATCH)}
-            onChange={() => onToggleMatch(match.ID_MATCH)}
-          />
-          <span style={{ marginLeft: 8 }}>
-            {match.TEAM} vs {match.OPPONENT} ({new Date(match.DATE).toLocaleDateString()})
-          </span>
-        </label>
-      ))}
+type MatchSummary = {
+  id: number;
+  team?: string | null;
+  opponent?: string | null;
+  date?: string | null;
+};
+
+type Props = {
+  matches: MatchSummary[];
+  selectedMatchIds: number[];
+  onToggleMatch: (id: number) => void;
+};
+
+const MultiMatchHeader: React.FC<Props> = ({ matches, selectedMatchIds, onToggleMatch }) => (
+  <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <h2 className="text-lg font-semibold text-slate-900 mb-3">Selecciona los partidos a mostrar</h2>
+    <div className="flex flex-wrap gap-3">
+      {matches.map((match) => {
+        const label = `${match.team ?? "Equipo"} vs ${match.opponent ?? "Rival"}`;
+        const dateLabel = match.date ? new Date(match.date).toLocaleDateString() : "";
+        return (
+          <label key={match.id} className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm text-slate-700 shadow-sm">
+            <input
+              type="checkbox"
+              checked={selectedMatchIds.includes(match.id)}
+              onChange={() => onToggleMatch(match.id)}
+              className="accent-blue-600"
+            />
+            <span className="font-medium">{label}</span>
+            {dateLabel && <span className="text-xs text-slate-500">({dateLabel})</span>}
+          </label>
+        );
+      })}
     </div>
   </div>
 );

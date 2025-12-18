@@ -5,7 +5,8 @@ export function getTeamFromEvent(ev: any): string | undefined {
     'TEAM', 'team', 'Team',
     'EQUIPO', 'equipo',
     'OPPONENT', 'opponent', 'Opponent',
-    'team_name', 'opponent_name', 'home', 'away', 'teamName', 'TEAM_NAME'
+    'team_name', 'opponent_name', 'home', 'away', 'teamName', 'TEAM_NAME',
+    'match_team', 'match_opponent'
   ];
 
   for (const f of tryFields) {

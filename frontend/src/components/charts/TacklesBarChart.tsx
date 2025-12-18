@@ -36,18 +36,8 @@ export default function TacklesBarChart({ events, onBarClick }: Props) {
     .map((t: string) => normalizeString(t).toLowerCase())
     .filter((t: string) => t && !/^(unknown|desconocido|rival|opponent|our_team|opp|home|away|nuestro equipo|equipo|team|oponente|rivales)$/i.test(t));
 
-  // Si no hay equipos propios detectados, no mostrar nada
-  if (!referenceOurTeams || referenceOurTeams.length === 0) {
-    console.log('TacklesBarChart - no se detectaron equipos propios, no renderizando');
-    return null;
-  }
-
-  // Solo mantener tackles que pertenezcan a nuestros equipos detectados
-  const tackleEvents = allTackleEvents.filter((e) => {
-    const team = getTeamFromEvent(e);
-    if (!team) return false;
-    return referenceOurTeams.includes(normalizeString(team).toLowerCase());
-  });
+  // No filtramos por equipo en multi: mostramos todos los tackles disponibles
+  const tackleEvents = allTackleEvents;
 
   console.log("TacklesBarChart - Total events:", events.length);
   console.log("TacklesBarChart - Filtered tackle events (our teams):", tackleEvents.length);

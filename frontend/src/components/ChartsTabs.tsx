@@ -142,22 +142,28 @@ const ChartsTabs = (_props: any) => {
     // Determinar la lista de 'nuestros equipos' usando el contexto completo `events` (no el filtrado),
     // para evitar detectar equipos incorrectos cuando `filteredEvents` contiene solo rivales.
     const teamsToUse = (ourTeamsList && ourTeamsList.length > 0) ? ourTeamsList : detectOurTeams(events || []);
-    if (!teamsToUse || teamsToUse.length === 0) return false;
+    const noTeamsDetected = !teamsToUse || teamsToUse.length === 0;
 
-    const normalizedOurTeams = teamsToUse
+    const normalizedOurTeams = noTeamsDetected ? [] : teamsToUse
       .map(t => normalizeString(t).toLowerCase())
       .filter(t => t && !/^(unknown|desconocido|rival|opponent|our_team|opp|home|away|nuestro equipo|nuestro|equipo|team|oponente|rivales)$/i.test(t));
-    if (normalizedOurTeams.length === 0) return false;
 
-    // Comprobar si en los eventos filtrados hay al menos un TACKLE perteneciente a nuestros equipos
+    // Comprobar si en los eventos filtrados hay al menos un TACKLE (si no hay equipos detectados, no filtrar por team)
     const tackleCount = filteredEvts.filter((e) => (e.CATEGORY === 'TACKLE' || e.event_type === 'TACKLE')).length;
-    const ourTackleCount = filteredEvts.filter((e) => {
-      const isTackle = (e.CATEGORY === 'TACKLE' || e.event_type === 'TACKLE');
-      if (!isTackle) return false;
-      const team = getTeamFromEvent(e);
-      if (!team) return false;
-      return normalizedOurTeams.includes(normalizeString(team).toLowerCase());
-    }).length;
+    let ourTackleCount = noTeamsDetected
+      ? tackleCount
+      : filteredEvts.filter((e) => {
+          const isTackle = (e.CATEGORY === 'TACKLE' || e.event_type === 'TACKLE');
+          if (!isTackle) return false;
+          const team = getTeamFromEvent(e);
+          if (!team) return false;
+          return normalizedOurTeams.includes(normalizeString(team).toLowerCase());
+        }).length;
+
+    // Fallback: si no encontramos tackles para nuestros equipos pero sí hay tackles, mostrar igual
+    if (ourTackleCount === 0 && tackleCount > 0) {
+      ourTackleCount = tackleCount;
+    }
 
     // DEBUG: imprimir estado resumido (ver consola del navegador, no logs del servidor)
     try {

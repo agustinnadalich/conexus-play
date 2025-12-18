@@ -24,6 +24,7 @@ const secondsToGameClock = (sec: number): string => {
 const TooltipContent = React.memo(({ active, payload }: any) => {
   if (active && payload && payload.length > 0) {
     const event = payload[0].payload;
+    const matchLabel = event.match_label || [event.match_team, event.match_opponent].filter(Boolean).join(" vs ");
 
     // Obtener información del jugador (omitir placeholders como 'unknown')
     let playerInfo: string | null = null;
@@ -90,6 +91,11 @@ const TooltipContent = React.memo(({ active, payload }: any) => {
 
     return (
       <div className="rounded bg-white p-3 shadow-lg border border-gray-300 text-sm max-w-md max-h-96 overflow-y-auto">
+        {matchLabel && (
+          <div className="text-xs font-semibold text-slate-700 mb-1">
+            Partido: <span className="text-slate-900">{matchLabel}</span>
+          </div>
+        )}
         <div className="font-bold text-base mb-2 text-blue-700">{event.category}</div>
         
         {/* Información de tiempo */}
@@ -158,7 +164,7 @@ const TimelineChart = ({ filteredEvents, onEventClick }: { filteredEvents: Match
   const lastAppliedDomainRef = useRef<[number, number]>([0, 600]);
   const lastWidthRef = useRef<number>(0);
   const { filterCategory, setFilterCategory, matchInfo } = useFilterContext();
-  const { setSelectedEvent, playEvent, currentTime, lastAppliedDelay } = usePlayback();
+  const { setSelectedEvent, playEvent, currentTime, lastAppliedDelay, selectedEvent } = usePlayback();
   // Track last user interaction (zoom/scroll/reset) to avoid auto-centering immediately after
   const lastUserActionRef = useRef<number>(0);
   // Track last automatic center to avoid loops while el video avanza
@@ -345,6 +351,7 @@ const TimelineChart = ({ filteredEvents, onEventClick }: { filteredEvents: Match
   const CustomTooltip = useCallback(({ active, payload }: any) => {
     if (active && payload && payload.length > 0) {
       const event = payload[0].payload;
+    const matchLabel = event.match_label || [event.match_team, event.match_opponent].filter(Boolean).join(" vs ");
 
       // Obtener información del jugador (omitir placeholders como 'unknown')
       let playerInfo: string | null = null;
@@ -411,7 +418,12 @@ const TimelineChart = ({ filteredEvents, onEventClick }: { filteredEvents: Match
 
       return (
         <div className="rounded bg-white p-3 shadow-lg border border-gray-300 text-sm max-w-md max-h-96 overflow-y-auto">
-          <div className="font-bold text-base mb-2 text-blue-700">{event.category}</div>
+        {matchLabel && (
+          <div className="text-xs font-semibold text-slate-700 mb-1">
+            Partido: <span className="text-slate-900">{matchLabel}</span>
+          </div>
+        )}
+        <div className="font-bold text-base mb-2 text-blue-700">{event.category}</div>
           
           {/* Información de tiempo */}
           <div className="mb-2 pb-2 border-b border-gray-200">
@@ -685,9 +697,20 @@ const TimelineChart = ({ filteredEvents, onEventClick }: { filteredEvents: Match
   const dynamicHeight = Math.min(30, Math.max(16, 150 / categories.length));
   const chartHeight = Math.min(400, Math.max(100, categories.length * dynamicHeight * 2));
   const currentGameTime = useMemo(() => {
+    // Prioridad: si el evento seleccionado trae Game_Time, úsalo para alinear la línea vertical.
+    const parseGT = (gt: any) => {
+      if (typeof gt !== "string" || !gt.includes(":")) return null;
+      const [m, s] = gt.split(":").map(Number);
+      if (Number.isNaN(m) || Number.isNaN(s)) return null;
+      return m * 60 + s;
+    };
+    const gtFromEvent = parseGT(selectedEvent?.extra_data?.Game_Time || selectedEvent?.Game_Time || selectedEvent?.game_time);
+    if (gtFromEvent !== null) {
+      return gtFromEvent;
+    }
     const appliedDelay = Number(lastAppliedDelay || 0);
     return videoToGameSeconds((currentTime ?? 0) - appliedDelay);
-  }, [currentTime, videoToGameSeconds, lastAppliedDelay]);
+  }, [currentTime, videoToGameSeconds, lastAppliedDelay, selectedEvent]);
 
   useEffect(() => {
     try {
@@ -705,7 +728,7 @@ const TimelineChart = ({ filteredEvents, onEventClick }: { filteredEvents: Match
 
   return (
     <div className="w-full">
-      <div ref={chartRef} className="overflow-x-auto" style={{ height: `${chartHeight}px` }}>
+      <div ref={chartRef} style={{ height: `${chartHeight}px`, overflow: "visible" }}>
         <ResponsiveContainer width="100%" height="100%">
           <ScatterChart margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
             <CartesianGrid />
@@ -733,7 +756,7 @@ const TimelineChart = ({ filteredEvents, onEventClick }: { filteredEvents: Match
               width={60}
               allowDuplicatedCategory={false}
             />
-            <Tooltip content={<TooltipContent />} isAnimationActive={false} />
+            <Tooltip content={<TooltipContent />} isAnimationActive={false} wrapperStyle={{ zIndex: 50, overflow: "visible", pointerEvents: "auto" }} />
             <Scatter
               data={data.filter(ev => ev.game_time_sec >= xDomain[0] && ev.game_time_sec <= xDomain[1])}
               isAnimationActive={false}

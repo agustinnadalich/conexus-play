@@ -7,11 +7,11 @@ const VideoPlayer = (props: any) => {
   const videoUrl = props.videoUrl ?? props.src ?? "";
   const { 
     currentTime, 
-    setCurrentTime, setIsPlaying, playFiltered, isPlaying, playNext, playPrev, selectedEvent, playRequestToken } = usePlayback();
+    setCurrentTime, setIsPlaying, playFiltered, isPlaying, playNext, playPrev, selectedEvent, playRequestToken, getAdjustedStart } = usePlayback();
 
 
   const videoRef = useRef<any>(null);
-  const isYouTube = videoUrl.includes("youtube.com/watch?v=");
+  const isYouTube = /youtube\.com|youtu\.be/.test(videoUrl);
   // PiP simulated state
   const [isPiP, setIsPiP] = useState(false);
   const [pipPos, setPipPos] = useState<{ left: number; top: number }>(() => {
@@ -27,56 +27,31 @@ const VideoPlayer = (props: any) => {
   useEffect(() => {
     if (!videoRef.current || !selectedEvent) return;
 
-    // currentTime ya viene ajustado en PlaybackContext; úsalo como prioridad
-    const targetTime = currentTime ?? resolveEventStart(selectedEvent);
+    const targetTime = getAdjustedStart ? getAdjustedStart(selectedEvent) : resolveEventStart(selectedEvent);
     const player: any = videoRef.current;
 
-    const seekAndPlay = () => {
-      try {
-        if (isYouTube) {
-          player.pauseVideo?.();
-          player.seekTo(targetTime, true);
-          player.playVideo?.();
-        } else {
-          player.pause?.();
-          player.currentTime = targetTime;
-          const playPromise = player.play?.();
-          if (playPromise && typeof playPromise.catch === "function") {
-            playPromise.catch(() => {});
-          }
+    try {
+      if (isYouTube) {
+        player.seekTo?.(targetTime, true);
+        player.playVideo?.();
+      } else {
+        // Evitar re-seek si ya estamos cerca del target
+        if (Math.abs((player.currentTime ?? 0) - targetTime) > 0.35) {
+          try {
+            player.currentTime = targetTime;
+          } catch (_) {}
         }
-        setCurrentTime(targetTime);
-        setIsPlaying(true);
-      } catch (err) {
-        console.warn("No se pudo saltar al evento seleccionado", err);
-      }
-    };
-
-    seekAndPlay();
-
-    // Segundo intento breve para evitar que quede pausado si el player ignora la primera orden
-    const retry = window.setTimeout(() => {
-      try {
-        if (isYouTube) {
-          player.playVideo?.();
-        } else {
-          const playPromise = player.play?.();
-          if (playPromise && typeof playPromise.catch === "function") {
-            playPromise.catch(() => {});
-          }
+        const playPromise = player.play?.();
+        if (playPromise && typeof playPromise.catch === "function") {
+          playPromise.catch(() => {});
         }
-        setIsPlaying(true);
-      } catch (err) {
-        // noop
       }
-    }, 120);
-
-    return () => {
-      if (retry) {
-        clearTimeout(retry);
-      }
-    };
-  }, [selectedEvent, isYouTube, setCurrentTime, setIsPlaying, playRequestToken]);
+      setCurrentTime(targetTime);
+      setIsPlaying(true);
+    } catch (err) {
+      console.warn("No se pudo saltar al evento seleccionado", err);
+    }
+  }, [selectedEvent, isYouTube, setCurrentTime, setIsPlaying, playRequestToken, getAdjustedStart, videoUrl]);
 
   // Manejar reproducción/pausa
   useEffect(() => {
@@ -239,17 +214,17 @@ const VideoPlayer = (props: any) => {
             videoId={videoUrl.split('v=')[1]?.split('&')[0]}
             onReady={(e) => (videoRef.current = e.target)}
             onStateChange={(e: any) => {
-              // e.data: -1(unstarted),0(ended),1(playing),2(paused),3(buffering),5(video cued)
-              const state = e.data;
-              if (state === 1) {
-                setIsPlaying(true);
-              } else if (state === 2 || state === 0) {
-                setIsPlaying(false);
-              }
-              // Actualizar tiempo una vez por cambio de estado
-              try {
-                handleTimeUpdate();
-              } catch (err) {
+            // e.data: -1(unstarted),0(ended),1(playing),2(paused),3(buffering),5(video cued)
+            const state = e.data;
+            if (state === 1) {
+              setIsPlaying(true);
+            } else if (state === 2 || state === 0) {
+              setIsPlaying(false);
+            }
+            // Actualizar tiempo una vez por cambio de estado
+            try {
+              handleTimeUpdate();
+            } catch (err) {
                 // noop
               }
             }}
