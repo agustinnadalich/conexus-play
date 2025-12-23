@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Trash2, Plus, RotateCw, ArrowLeft, Download, TestTube } from 'lucide-react';
+import { authFetch } from '@/api/api';
 
 interface CategoryMapping {
   id: number;
@@ -52,7 +53,7 @@ const MappingsAdmin: React.FC = () => {
       if (filter.language) params.append('language', filter.language);
       if (filter.target_category) params.append('target_category', filter.target_category);
 
-      const response = await fetch(`http://localhost:5001/api/mappings?${params}`);
+      const response = await authFetch(`/mappings?${params}`);
       const data = await response.json();
       setMappings(data.mappings || []);
     } catch (error) {
@@ -71,7 +72,7 @@ const MappingsAdmin: React.FC = () => {
     }
 
     try {
-      const response = await fetch('http://localhost:5001/api/mappings', {
+      const response = await authFetch('/mappings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newMapping)
@@ -101,7 +102,7 @@ const MappingsAdmin: React.FC = () => {
     if (!confirm('¿Eliminar este mapeo?')) return;
 
     try {
-      const response = await fetch(`http://localhost:5001/api/mappings/${id}`, {
+      const response = await authFetch(`/mappings/${id}`, {
         method: 'DELETE'
       });
 
@@ -118,7 +119,7 @@ const MappingsAdmin: React.FC = () => {
     if (!confirm('¿Cargar mapeos por defecto (rugby)? Esto agregará ~60 mapeos.')) return;
 
     try {
-      const response = await fetch('http://localhost:5001/api/mappings/init-defaults', {
+      const response = await authFetch('/mappings/init-defaults', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reset: false })
@@ -136,7 +137,7 @@ const MappingsAdmin: React.FC = () => {
     if (!testTerm) return;
 
     try {
-      const response = await fetch('http://localhost:5001/api/mappings/test-translation', {
+      const response = await authFetch('/mappings/test-translation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

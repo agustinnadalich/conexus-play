@@ -4,7 +4,7 @@ import {
   TabsTrigger,
   TabsContent,
 } from "@/components/ui/tabs";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import {
   PossessionTabContent,
   TacklesTabContent,
@@ -60,7 +60,193 @@ const getPlayerNameGeneric = (event: any): string | null => {
   return s.length ? s : null;
 };
 
-const ChartsTabs = (_props: any) => {
+type MatchSummaryMeta = {
+  id: number;
+  team?: string | null;
+  opponent?: string | null;
+  date?: string | null;
+  label?: string | null;
+};
+
+type MatchProgressionDatum = {
+  matchId: number;
+  label: string;
+  bars: Record<string, number>;
+  lineValue?: number | null;
+};
+
+const parseDateValue = (date?: string | null) => {
+  if (!date) return null;
+  const ts = Date.parse(date);
+  return Number.isFinite(ts) ? ts : null;
+};
+
+const formatMatchLabel = (meta: MatchSummaryMeta) => {
+  const base = meta.label || [meta.team, meta.opponent].filter(Boolean).join(" vs ") || `Partido ${meta.id}`;
+  const ts = parseDateValue(meta.date);
+  if (!ts) return base;
+  const dateLabel = new Date(ts).toLocaleDateString();
+  return `${dateLabel} · ${base}`;
+};
+
+const buildMatchOrder = (
+  events: MatchEvent[],
+  matches?: MatchSummaryMeta[],
+  selectedMatchIds?: number[]
+): MatchSummaryMeta[] => {
+  const metaMap = new Map<number, MatchSummaryMeta>();
+
+  (matches || []).forEach((m) => {
+    metaMap.set(m.id, { ...m, label: formatMatchLabel(m) });
+  });
+
+  (events || []).forEach((ev) => {
+    const id = Number((ev as any).match_id ?? (ev as any).matchId);
+    if (!Number.isFinite(id)) return;
+    if (!metaMap.has(id)) {
+      const label = formatMatchLabel({
+        id,
+        label: ev.match_label,
+        team: (ev as any).match_team,
+        opponent: (ev as any).match_opponent,
+        date: (ev as any).match_date ?? null,
+      });
+      metaMap.set(id, {
+        id,
+        label,
+        team: (ev as any).match_team,
+        opponent: (ev as any).match_opponent,
+        date: (ev as any).match_date ?? null,
+      });
+    }
+  });
+
+  const desiredOrder = selectedMatchIds && selectedMatchIds.length > 0 ? selectedMatchIds : Array.from(metaMap.keys());
+  const uniqueOrdered = Array.from(new Set(desiredOrder));
+  const enriched = uniqueOrdered.map((id) => metaMap.get(id)).filter(Boolean) as MatchSummaryMeta[];
+
+  return enriched.sort((a, b) => {
+    const da = parseDateValue(a.date);
+    const db = parseDateValue(b.date);
+    if (da !== db) {
+      if (da === null) return 1;
+      if (db === null) return -1;
+      return da - db;
+    }
+    return a.id - b.id;
+  });
+};
+
+const isOurEvent = (event: MatchEvent, ourTeamsList: string[]) => {
+  const team = getTeamFromEvent(event);
+  if (team) return isOurTeam(team, ourTeamsList);
+  return !isOpponent(event);
+};
+
+const getPointsValue = (ev: any) => {
+  const type = String(
+    ev?.POINTS ??
+      ev?.PUNTOS ??
+      ev?.extra_data?.POINTS ??
+      ev?.extra_data?.PUNTOS ??
+      ev?.extra_data?.["TIPO-PUNTOS"] ??
+      ev?.extra_data?.TIPO_PUNTOS ??
+      ev?.TIPO_PUNTOS ??
+      ev?.["TIPO-PUNTOS"] ??
+      ev?.MISC ??
+      ""
+  ).toUpperCase();
+  if (type.includes("TRY")) return 5;
+  if (type.includes("CONVERSION") || type.includes("CONVERT")) return 2;
+  if (type.includes("PENALTY") || type.includes("PENAL")) return 3;
+  if (type.includes("DROP")) return 3;
+  const v =
+    ev?.["POINTS(VALUE)"] ??
+    ev?.["POINTS_VALUE"] ??
+    ev?.["POINTS VALUE"] ??
+    ev?.POINTS ??
+    ev?.PUNTOS ??
+    ev?.extra_data?.PUNTOS ??
+    0;
+  const num = Number(v);
+  return Number.isFinite(num) ? num : 0;
+};
+
+const normalizeScrumResult = (raw: any) => {
+  const s = String(raw ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
+  if (!s) return "";
+  if (s.includes("WIN") || s.includes("GAN")) return "WIN";
+  if (s.includes("LOSE") || s.includes("LOST") || s.includes("PERD")) return "LOSE";
+  if (s.includes("PEN")) return "PENAL";
+  if (s.includes("FREE")) return "FREE";
+  return s;
+};
+
+const normalizeLineoutResult = (raw: any) => {
+  const s = String(raw ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .trim()
+    .replace(/[\s_-]+/g, "");
+  if (!s) return "";
+  if (s.includes("LIMPIA") || s.includes("CLEAN") || s.includes("GAN")) return "WIN";
+  if (s.includes("SUCIA") || s.includes("DIRTY")) return "WIN";
+  if (s.includes("LOST") || s.includes("LOSE") || s.includes("PERD") || s.includes("TORCID") || s.includes("NOTSTRAIGHT") || s.includes("STEAL"))
+    return "LOSE";
+  return s;
+};
+
+const normalizeTeamName = (val: any) => normalizeString(val).toUpperCase().replace(/\s+/g, " ").trim();
+
+const resolveOwner = (ev: any, meta: MatchSummaryMeta | undefined, ourTeamsList: string[]) => {
+  // Prefer explicit flags
+  const oppFlag =
+    ev.IS_OPPONENT ??
+    ev.is_opponent ??
+    ev?.extra_data?.IS_OPPONENT ??
+    ev?.extra_data?.is_opponent ??
+    null;
+  if (oppFlag === true || String(oppFlag).toLowerCase() === "true" || String(oppFlag) === "1") return "opp";
+
+  // Team info from event (no match_* fields to avoid conflating metadata)
+  const eventTeamCandidates = [
+    ev.team,
+    ev.TEAM,
+    ev.EQUIPO,
+    ev.extra_data?.TEAM,
+    ev.extra_data?.EQUIPO,
+    ev.extra_data?.team,
+    ev.extra_data?.equipo,
+  ].filter(Boolean);
+
+  const eventTeam = eventTeamCandidates.length ? normalizeTeamName(eventTeamCandidates[0]) : "";
+  const matchTeam = meta?.team ? normalizeTeamName(meta.team) : "";
+  const matchOpp = meta?.opponent ? normalizeTeamName(meta.opponent) : "";
+
+  if (eventTeam && matchTeam && eventTeam === matchTeam) return "our";
+  if (eventTeam && matchOpp && eventTeam === matchOpp) return "opp";
+
+  const normalizedOurList = (ourTeamsList || []).map((t) => normalizeTeamName(t)).filter(Boolean);
+  if (eventTeam && normalizedOurList.includes(eventTeam)) return "our";
+
+  // If team info matches opponent markers
+  if (eventTeam && /\b(OPP|OPPONENT|RIVAL|VISITA|AWAY)\b/.test(eventTeam)) return "opp";
+
+  // Last resort: heuristic
+  if (isOpponent(ev as any)) return "opp";
+  return "our";
+};
+
+type ChartsTabsProps = {
+  onEventClick?: (ev: any) => void;
+  currentTime?: number;
+  matchSummaries?: MatchSummaryMeta[];
+  selectedMatchIds?: number[];
+  isMultiMatch?: boolean;
+};
+
+const ChartsTabs = (_props: ChartsTabsProps) => {
   const {
     events,
     filteredEvents,
@@ -80,6 +266,212 @@ const ChartsTabs = (_props: any) => {
   };
 
   const filteredEventsList = Array.isArray(filteredEvents) ? filteredEvents : [];
+
+  const eventsForAggregation = filteredEventsList.length > 0 ? filteredEventsList : (events || []);
+  const isMultiMatchMode =
+    _props.isMultiMatch ??
+    (new Set(eventsForAggregation.map((ev: any) => Number((ev as any).match_id ?? (ev as any).matchId)).filter((id) => Number.isFinite(id))).size > 1 ||
+      ((_props.selectedMatchIds?.length || 0) > 1));
+
+  const matchOrder = useMemo(
+    () => buildMatchOrder(eventsForAggregation, _props.matchSummaries, _props.selectedMatchIds),
+    [eventsForAggregation, _props.matchSummaries, _props.selectedMatchIds]
+  );
+
+  const eventsByMatch = useMemo(() => {
+    const map = new Map<number, MatchEvent[]>();
+    (eventsForAggregation || []).forEach((ev: any) => {
+      const id = Number(ev.match_id ?? ev.matchId);
+      if (!Number.isFinite(id)) return;
+      if (!map.has(id)) map.set(id, []);
+      map.get(id)!.push(ev);
+    });
+    return map;
+  }, [eventsForAggregation]);
+
+  const tacklesProgression: MatchProgressionDatum[] = useMemo(() => {
+    if (!isMultiMatchMode || matchOrder.length === 0) return [];
+    return matchOrder
+      .map((meta) => {
+        const evts = eventsByMatch.get(meta.id) || [];
+        const ours = evts.filter((ev) => resolveOwner(ev, meta, ourTeamsList) === "our");
+        const opps = evts.filter((ev) => resolveOwner(ev, meta, ourTeamsList) === "opp");
+        const ourOk = ours.filter((ev) => ev.event_type === "TACKLE" || ev.CATEGORY === "TACKLE").length;
+        const ourMiss = ours.filter((ev) => ev.event_type === "MISSED-TACKLE").length;
+        const oppOk = opps.filter((ev) => ev.event_type === "TACKLE" || ev.CATEGORY === "TACKLE").length;
+        const oppMiss = opps.filter((ev) => ev.event_type === "MISSED-TACKLE").length;
+        const total = ourOk + ourMiss + oppOk + oppMiss;
+        if (total === 0) return null;
+        const ourEffectiveness = ourOk + ourMiss > 0 ? Math.round((ourOk / (ourOk + ourMiss)) * 1000) / 10 : null;
+        return {
+          matchId: meta.id,
+          label: meta.label || formatMatchLabel(meta),
+          bars: {
+            "Tackles OK (nuestros)": ourOk,
+            "Errados (nuestros)": ourMiss,
+            "Tackles OK (rival)": oppOk,
+            "Errados (rival)": oppMiss,
+          },
+          lineValue: ourEffectiveness,
+        } as MatchProgressionDatum;
+      })
+      .filter(Boolean) as MatchProgressionDatum[];
+  }, [isMultiMatchMode, matchOrder, eventsByMatch]);
+
+  const pointsProgression: MatchProgressionDatum[] = useMemo(() => {
+    if (!isMultiMatchMode || matchOrder.length === 0) return [];
+    return matchOrder
+      .map((meta) => {
+        const evts = (eventsByMatch.get(meta.id) || []).filter(isPoints);
+        let scored = 0;
+        let conceded = 0;
+        evts.forEach((ev) => {
+          const val = getPointsValue(ev);
+          if (!val) return;
+          const owner = resolveOwner(ev, meta, ourTeamsList);
+          if (owner === "our") scored += val;
+          else conceded += val;
+        });
+        if (scored === 0 && conceded === 0) return null;
+        return {
+          matchId: meta.id,
+          label: meta.label || formatMatchLabel(meta),
+          bars: { "Hechos (nuestros)": scored, "Recibidos (rival)": conceded },
+        } as MatchProgressionDatum;
+      })
+      .filter(Boolean) as MatchProgressionDatum[];
+  }, [eventsByMatch, isMultiMatchMode, matchOrder, ourTeamsList]);
+
+  const scrumsProgression: MatchProgressionDatum[] = useMemo(() => {
+    if (!isMultiMatchMode || matchOrder.length === 0) return [];
+    return matchOrder
+      .map((meta) => {
+        const evts = (eventsByMatch.get(meta.id) || []).filter(isScrum);
+        const ourScrums = evts.filter((ev) => resolveOwner(ev, meta, ourTeamsList) === "our");
+        const oppScrums = evts.filter((ev) => resolveOwner(ev, meta, ourTeamsList) === "opp");
+        const wins = ourScrums.filter((ev) => normalizeScrumResult(ev.SCRUM_RESULT ?? ev.SCRUM ?? ev.extra_data?.SCRUM ?? ev.extra_data?.SCRUM_RESULT) === "WIN").length;
+        const lost = ourScrums.filter((ev) => normalizeScrumResult(ev.SCRUM_RESULT ?? ev.SCRUM ?? ev.extra_data?.SCRUM ?? ev.extra_data?.SCRUM_RESULT) === "LOSE").length;
+        const oppWins = oppScrums.filter((ev) => normalizeScrumResult(ev.SCRUM_RESULT ?? ev.SCRUM ?? ev.extra_data?.SCRUM ?? ev.extra_data?.SCRUM_RESULT) === "WIN").length;
+        const oppLost = oppScrums.filter((ev) => normalizeScrumResult(ev.SCRUM_RESULT ?? ev.SCRUM ?? ev.extra_data?.SCRUM ?? ev.extra_data?.SCRUM_RESULT) === "LOSE").length;
+        const total = wins + lost + oppWins + oppLost;
+        if (total === 0) return null;
+        const eff = wins + lost > 0 ? Math.round((wins / (wins + lost)) * 1000) / 10 : null;
+        return {
+          matchId: meta.id,
+          label: meta.label || formatMatchLabel(meta),
+          bars: { "Ganados (nuestros)": wins, "Perdidos (nuestros)": lost, "Ganados (rival)": oppWins, "Perdidos (rival)": oppLost },
+          lineValue: eff,
+        } as MatchProgressionDatum;
+      })
+      .filter(Boolean) as MatchProgressionDatum[];
+  }, [eventsByMatch, isMultiMatchMode, matchOrder, ourTeamsList]);
+
+  const lineoutsProgression: MatchProgressionDatum[] = useMemo(() => {
+    if (!isMultiMatchMode || matchOrder.length === 0) return [];
+    return matchOrder
+      .map((meta) => {
+        const evts = (eventsByMatch.get(meta.id) || []).filter(isLineout);
+        const ourLineouts = evts.filter((ev) => resolveOwner(ev, meta, ourTeamsList) === "our");
+        const oppLineouts = evts.filter((ev) => resolveOwner(ev, meta, ourTeamsList) === "opp");
+        const wins = ourLineouts.filter((ev) =>
+          normalizeLineoutResult(
+            ev.extra_data?.["RESULTADO-LINE"] ??
+              ev.extra_data?.LINE_RESULT ??
+              ev.LINE_RESULT ??
+              ev.LINEOUT_RESULT ??
+              ev["LINEOUT_RESULT"]
+          ) === "WIN"
+        ).length;
+        const lost = ourLineouts.filter((ev) =>
+          normalizeLineoutResult(
+            ev.extra_data?.["RESULTADO-LINE"] ??
+              ev.extra_data?.LINE_RESULT ??
+              ev.LINE_RESULT ??
+              ev.LINEOUT_RESULT ??
+              ev["LINEOUT_RESULT"]
+          ) === "LOSE"
+        ).length;
+        const oppWins = oppLineouts.filter((ev) =>
+          normalizeLineoutResult(
+            ev.extra_data?.["RESULTADO-LINE"] ??
+              ev.extra_data?.LINE_RESULT ??
+              ev.LINE_RESULT ??
+              ev.LINEOUT_RESULT ??
+              ev["LINEOUT_RESULT"]
+          ) === "WIN"
+        ).length;
+        const oppLost = oppLineouts.filter((ev) =>
+          normalizeLineoutResult(
+            ev.extra_data?.["RESULTADO-LINE"] ??
+              ev.extra_data?.LINE_RESULT ??
+              ev.LINE_RESULT ??
+              ev.LINEOUT_RESULT ??
+              ev["LINEOUT_RESULT"]
+          ) === "LOSE"
+        ).length;
+        const total = wins + lost + oppWins + oppLost;
+        if (total === 0) return null;
+        const eff = wins + lost > 0 ? Math.round((wins / (wins + lost)) * 1000) / 10 : null;
+        return {
+          matchId: meta.id,
+          label: meta.label || formatMatchLabel(meta),
+          bars: { "Ganados (nuestros)": wins, "Perdidos (nuestros)": lost, "Ganados (rival)": oppWins, "Perdidos (rival)": oppLost },
+          lineValue: eff,
+        } as MatchProgressionDatum;
+      })
+      .filter(Boolean) as MatchProgressionDatum[];
+  }, [eventsByMatch, isMultiMatchMode, matchOrder, ourTeamsList]);
+
+  const lineBreaksProgression: MatchProgressionDatum[] = useMemo(() => {
+    if (!isMultiMatchMode || matchOrder.length === 0) return [];
+    return matchOrder
+      .map((meta) => {
+        const evts = (eventsByMatch.get(meta.id) || []).filter(isLineBreak);
+        const ours = evts.filter((ev) => resolveOwner(ev, meta, ourTeamsList) === "our").length;
+        const opp = evts.filter((ev) => resolveOwner(ev, meta, ourTeamsList) === "opp").length;
+        if (evts.length === 0) return null;
+        return {
+          matchId: meta.id,
+          label: meta.label || formatMatchLabel(meta),
+          bars: { "Quiebres propios": ours, "Quiebres rivales": opp },
+        } as MatchProgressionDatum;
+      })
+      .filter(Boolean) as MatchProgressionDatum[];
+  }, [eventsByMatch, isMultiMatchMode, matchOrder, ourTeamsList]);
+
+  const triesProgression: MatchProgressionDatum[] = useMemo(() => {
+    if (!isMultiMatchMode || matchOrder.length === 0) return [];
+    return matchOrder
+      .map((meta) => {
+        const evts = (eventsByMatch.get(meta.id) || []).filter(isTries);
+        const ours = evts.filter((ev) => resolveOwner(ev, meta, ourTeamsList) === "our").length;
+        const opp = evts.filter((ev) => resolveOwner(ev, meta, ourTeamsList) === "opp").length;
+        if (evts.length === 0) return null;
+        return {
+          matchId: meta.id,
+          label: meta.label || formatMatchLabel(meta),
+          bars: { "Tries propios": ours, "Tries rivales": opp },
+        } as MatchProgressionDatum;
+      })
+      .filter(Boolean) as MatchProgressionDatum[];
+  }, [eventsByMatch, isMultiMatchMode, matchOrder, ourTeamsList]);
+
+  const penaltiesProgression: MatchProgressionDatum[] = useMemo(() => {
+    if (!isMultiMatchMode || matchOrder.length === 0) return [];
+    return matchOrder
+      .map((meta) => {
+        const evts = (eventsByMatch.get(meta.id) || []).filter(isPenalties);
+        const ours = evts.filter((ev) => resolveOwner(ev, meta, ourTeamsList) === "our").length;
+        const opp = evts.filter((ev) => resolveOwner(ev, meta, ourTeamsList) === "opp").length;
+        if (evts.length === 0) return null;
+        return {
+          matchId: meta.id,
+          label: meta.label || formatMatchLabel(meta),
+          bars: { "Penales propios": ours, "Penales rivales": opp },
+        } as MatchProgressionDatum;
+      })
+      .filter(Boolean) as MatchProgressionDatum[];
+  }, [eventsByMatch, isMultiMatchMode, matchOrder, ourTeamsList]);
 
     // Devuelve el estado de origen de tries:
     // 'calculated' = al menos un try tiene un origen real distinto de OTROS/RC
@@ -1027,11 +1419,20 @@ const ChartsTabs = (_props: any) => {
           availability={tacklesAvailability}
           onChartClick={handleChartClick}
           onEventClick={_props.onEventClick}
+          progressionData={tacklesProgression}
+          showProgression={isMultiMatchMode}
         />
       </TabsContent>
 
       <TabsContent value="points">
-        <PointsTabContent hasPoints={hasPoints} pointsEvents={pointsEvents} onChartClick={handleChartClick} onEventClick={_props.onEventClick} />
+        <PointsTabContent
+          hasPoints={hasPoints}
+          pointsEvents={pointsEvents}
+          onChartClick={handleChartClick}
+          onEventClick={_props.onEventClick}
+          progressionData={pointsProgression}
+          showProgression={isMultiMatchMode}
+        />
       </TabsContent>
 
       <TabsContent value="tries">
@@ -1042,6 +1443,8 @@ const ChartsTabs = (_props: any) => {
           pointsEvents={pointsEvents}
           onChartClick={handleChartClick}
           onEventClick={_props.onEventClick}
+          progressionData={triesProgression}
+          showProgression={isMultiMatchMode}
         />
       </TabsContent>
 
@@ -1052,6 +1455,9 @@ const ChartsTabs = (_props: any) => {
           penaltyEvents={penaltyEvents}
           onChartClick={handleChartClick}
           onEventClick={_props.onEventClick}
+          progressionData={penaltiesProgression}
+          showProgression={isMultiMatchMode}
+          ourTeamsList={ourTeamsList}
         />
       </TabsContent>
 
@@ -1083,6 +1489,9 @@ const ChartsTabs = (_props: any) => {
           onChartClick={handleChartClick}
           matchInfo={matchInfo}
           ourTeamsList={ourTeamsList}
+          showProgression={isMultiMatchMode}
+          scrumProgression={scrumsProgression}
+          lineoutProgression={lineoutsProgression}
         />
       </TabsContent>
 
@@ -1139,6 +1548,8 @@ const ChartsTabs = (_props: any) => {
           lineBreakEvents={lineBreakEvents}
           matchInfo={matchInfo}
           onChartClick={handleChartClick}
+          showProgression={isMultiMatchMode}
+          progressionData={lineBreaksProgression}
         />
       </TabsContent>
 

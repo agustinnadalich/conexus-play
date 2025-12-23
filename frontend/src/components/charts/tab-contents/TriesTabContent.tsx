@@ -4,6 +4,7 @@ import TriesPhasesChart from "../TriesPhasesChart";
 import TriesOriginChart from "../TriesOriginChart";
 import TabEventsList from "./TabEventsList";
 import { MatchEvent } from "@/types";
+import MatchProgressionChart, { MatchProgressionDatum } from "../MatchProgressionChart";
 
 type Props = {
   hasTries: boolean;
@@ -12,6 +13,8 @@ type Props = {
   pointsEvents: MatchEvent[];
   onChartClick: (...args: any[]) => void;
   onEventClick?: (event: MatchEvent) => void;
+  progressionData?: MatchProgressionDatum[];
+  showProgression?: boolean;
 };
 
 const TriesTabContent = ({
@@ -21,9 +24,19 @@ const TriesTabContent = ({
   pointsEvents,
   onChartClick,
   onEventClick,
+  progressionData,
+  showProgression,
 }: Props) => (
   <div className="space-y-4">
     <h3 className="text-lg font-semibold">Tries</h3>
+    {showProgression && progressionData && progressionData.length > 0 && (
+      <div className="border rounded-lg p-4">
+        <h4 className="font-medium mb-2">Tries por partido (MultiMatch)</h4>
+        <div className="h-72">
+          <MatchProgressionChart title="Tries propios vs rivales" data={progressionData} />
+        </div>
+      </div>
+    )}
     {hasTries ? (
       <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -5,17 +5,21 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { API_BASE, authFetch } from "@/api/api";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const ImportMatch = () => {
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedProfile, setSelectedProfile] = useState<string>("");
+  const [teamId, setTeamId] = useState<string>("none");
+  const [teams, setTeams] = useState<any[]>([]);
   const navigate = useNavigate();
 
   const profilesQuery = useQuery({
     queryKey: ["importProfiles"],
     queryFn: async () => {
-      const res = await fetch("http://localhost:5001/api/import/profiles");
+      const res = await authFetch("/import/profiles");
       if (!res.ok) throw new Error("Error al obtener perfiles");
       return res.json();
     },
@@ -27,6 +31,21 @@ const ImportMatch = () => {
       if (defaultProfile) setSelectedProfile(defaultProfile.name);
     }
   }, [profilesQuery.data, selectedProfile]);
+
+  useEffect(() => {
+    const loadTeams = async () => {
+      try {
+        const res = await authFetch("/teams");
+        if (res.ok) {
+          const data = await res.json();
+          setTeams(data.teams || []);
+        }
+      } catch {
+        // ignore
+      }
+    };
+    loadTeams();
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -58,35 +77,39 @@ const ImportMatch = () => {
     formData.append("file", file);
 
     try {
-        console.log("Perfil seleccionado:", selectedProfile);
-        console.log("Archivo:", file.name, "Tamaño:", file.size);
+      console.log("Perfil seleccionado:", selectedProfile);
+      console.log("Archivo:", file.name, "Tamaño:", file.size);
+      const token = localStorage.getItem("access_token");
 
-        const res = await fetch(`http://localhost:5001/api/import/preview?profile=${encodeURIComponent(selectedProfile)}`, {
-            method: 'POST',
-            body: formData,
-        });
+      const res = await fetch(`${API_BASE}/import/preview?profile=${encodeURIComponent(selectedProfile)}`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
 
-        if (!res.ok) {
-          const errorData = await res.json().catch(() => ({ error: `HTTP ${res.status}: ${res.statusText}` }));
-          const errorMessage = errorData.error || "Error al previsualizar archivo";
-          throw new Error(errorMessage);
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: `HTTP ${res.status}: ${res.statusText}` }));
+        const errorMessage = errorData.error || "Error al previsualizar archivo";
+        throw new Error(errorMessage);
+      }
+
+      const data = await res.json();
+      console.log("Datos de preview:", data);
+
+      // No pasar el archivo en el state, solo la información necesaria
+      const profileObject = profilesQuery.data?.find((p: any) => p.name === selectedProfile);
+      
+      navigate("/preview", {
+        state: {
+          previewData: data,
+          fileName: file.name,
+          fileSize: file.size,
+          profile: profileObject,
+          teamId: teamId !== "none" ? teamId : undefined,
         }
-
-        const data = await res.json();
-        console.log("Datos de preview:", data);
-
-        // No pasar el archivo en el state, solo la información necesaria
-        // Buscar el objeto completo del perfil
-        const profileObject = profilesQuery.data?.find((p: any) => p.name === selectedProfile);
-        
-        navigate("/preview", {
-          state: {
-            previewData: data,
-            fileName: file.name,
-            fileSize: file.size,
-            profile: profileObject
-          }
-        });
+      });
     } catch (err: any) {
       console.error("Error en preview:", err);
       setError(err.message || "Error al procesar el archivo");
@@ -104,9 +127,13 @@ const ImportMatch = () => {
     formData.append("profile", selectedProfile);
 
     try {
-      const res = await fetch("http://localhost:5001/api/import/upload", {
+      const token = localStorage.getItem("access_token");
+      const res = await fetch(`${API_BASE}/import/upload`, {
         method: "POST",
         body: formData,
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
       });
 
       if (!res.ok) throw new Error("Error al subir el archivo");
@@ -145,6 +172,27 @@ const ImportMatch = () => {
               {selectedProfile
                 ? `Usando perfil: ${selectedProfile}`
                 : "Por favor, selecciona un perfil para continuar."}
+            </p>
+          </div>
+
+          {/* Selector de equipo (opcional) */}
+          <div>
+            <Label>Equipo</Label>
+            <Select value={teamId} onValueChange={(v) => setTeamId(v)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar equipo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Sin equipo</SelectItem>
+                {teams.map((t: any) => (
+                  <SelectItem key={t.id} value={String(t.id)}>
+                    {t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-sm text-gray-500 mt-2">
+              Puedes asignar un equipo existente o dejarlo “Sin equipo” y editarlo luego.
             </p>
           </div>
 

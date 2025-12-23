@@ -12,6 +12,7 @@ import FieldMapChart from "@/components/charts/FieldMapChart";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { FiFilter, FiX } from "react-icons/fi";
 import { cn } from "@/lib/utils";
+import { API_BASE, authFetch } from "@/api/api";
 
 type MatchSummary = {
   id: number;
@@ -49,7 +50,7 @@ const MultiMatchReportPageContent = () => {
   // Cargar partidos disponibles
   useEffect(() => {
     const fetchMatches = async () => {
-      const res = await fetch("http://localhost:5001/api/matches");
+      const res = await authFetch(`/matches`);
       const data = await res.json();
       setMatches(Array.isArray(data) ? data : []);
       // Si no había selección previa, marcar todos
@@ -77,7 +78,7 @@ const MultiMatchReportPageContent = () => {
       setLoadingEvents(true);
       try {
         const params = `match_ids=${selectedMatchIds.join(",")}`;
-        const res = await fetch(`http://localhost:5001/api/matches/events?${params}`);
+        const res = await authFetch(`/matches/events?${params}`);
         const data = await res.json();
         const normalized = (data.events || []).map((ev: any) => {
           const teamName = ev.match_team || ev.team || ev.extra_data?.TEAM || ev.extra_data?.EQUIPO;
@@ -214,6 +215,9 @@ const MultiMatchReportPageContent = () => {
                   handleEventClick(ev);
                 }}
                 currentTime={currentTime}
+                matchSummaries={selectedSummaries}
+                selectedMatchIds={selectedMatchIds}
+                isMultiMatch
               />
             </ErrorBoundary>
 

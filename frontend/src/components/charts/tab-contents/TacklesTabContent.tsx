@@ -5,6 +5,7 @@ import MissedTacklesBarChart from "../MissedTacklesBarChart";
 import TacklesByTeamChart from "../TacklesByTeamChart";
 import TabEventsList from "./TabEventsList";
 import { MatchEvent } from "@/types";
+import MatchProgressionChart, { MatchProgressionDatum } from "../MatchProgressionChart";
 
 type Availability = {
   hasTacklesBarChartData: boolean;
@@ -19,9 +20,11 @@ type Props = {
   availability: Availability;
   onChartClick: (...args: any[]) => void;
   onEventClick?: (event: MatchEvent) => void;
+  progressionData?: MatchProgressionDatum[];
+  showProgression?: boolean;
 };
 
-const TacklesTabContent = ({ filteredEvents, availability, onChartClick, onEventClick }: Props) => {
+const TacklesTabContent = ({ filteredEvents, availability, onChartClick, onEventClick, progressionData, showProgression }: Props) => {
   const {
     hasTacklesBarChartData,
     hasTackleAdvanceData,
@@ -30,16 +33,31 @@ const TacklesTabContent = ({ filteredEvents, availability, onChartClick, onEvent
     hasTacklesByTeamChartData,
   } = availability;
 
+  const hasProgression = Boolean(showProgression && progressionData && progressionData.length > 0);
   const noCharts =
     !hasTacklesBarChartData &&
     !hasTackleAdvanceData &&
     !hasTacklesTimeChartData &&
     !hasMissedTacklesBarChartData &&
-    !hasTacklesByTeamChartData;
+    !hasTacklesByTeamChartData &&
+    !hasProgression;
 
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-semibold">Estadísticas de Tackles</h3>
+
+      {hasProgression && (
+        <div className="border rounded-lg p-4">
+          <h4 className="font-medium mb-2">Progresión por partido (MultiMatch)</h4>
+          <div className="h-72">
+            <MatchProgressionChart
+              title="Tackles efectivos y errados por partido"
+              data={progressionData || []}
+              lineLabel="Efectividad (%)"
+            />
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {hasTacklesBarChartData && (

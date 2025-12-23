@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./DashboardPage.css";
+import { authFetch } from "@/api/api";
 
 const DashboardPage = () => {
   const [matches, setMatches] = useState([]); // Estado para almacenar los partidos
@@ -10,7 +11,7 @@ const DashboardPage = () => {
   useEffect(() => {
     const fetchMatches = async () => {
       try {
-        const response = await fetch("http://localhost:5001/matches"); // Llama al backend
+        const response = await authFetch("/matches"); // Llama al backend
         const data = await response.json();
         setMatches(data.matches || []); // Actualiza el estado con los partidos
       } catch (error) {

@@ -1,0 +1,24 @@
+# ====================================
+# PRODUCCIÓN - Backend con Gunicorn
+# ====================================
+FROM python:3.11
+
+WORKDIR /app
+
+# Instalar dependencias
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Instalar Gunicorn para producción
+RUN pip install gunicorn==21.2.0
+
+# Copiar código
+COPY . .
+
+EXPOSE 5001
+
+ENV FLASK_APP=app.py
+
+# Usar Gunicorn en producción
+# 4 workers, timeout 120s, bind a todas las interfaces
+CMD ["gunicorn", "--workers=4", "--timeout=120", "--bind=0.0.0.0:5001", "app:app"]

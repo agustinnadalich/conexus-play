@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { authFetch } from "@/api/api";
 
 
 const CreateProfile = () => {
@@ -51,7 +52,7 @@ const CreateProfile = () => {
   const profilesQuery = useQuery({
     queryKey: ["profiles"],
     queryFn: async () => {
-      const res = await fetch("http://localhost:5001/api/import/profiles");
+      const res = await authFetch("/import/profiles");
       if (!res.ok) throw new Error("Error al cargar perfiles");
       return res.json();
     }
@@ -140,7 +141,7 @@ const CreateProfile = () => {
         },
       };
 
-      const res = await fetch("http://localhost:5001/api/import/profiles", {
+      const res = await authFetch("/import/profiles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(profile),

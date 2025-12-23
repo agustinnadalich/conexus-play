@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { authFetch } from '@/api/api';
 
 export const useEvents = (matchId: number) => {
   return useQuery({
@@ -6,7 +7,7 @@ export const useEvents = (matchId: number) => {
     queryFn: async () => {
       try {
         // Obtener eventos
-        const eventsRes = await fetch(`http://localhost:5001/api/matches/${matchId}/events`);
+        const eventsRes = await authFetch(`/matches/${matchId}/events`);
         if (!eventsRes.ok) {
           throw new Error(`Error fetching events: ${eventsRes.status}`);
         }
@@ -17,7 +18,7 @@ export const useEvents = (matchId: number) => {
         let matchJson: any = {};
         let matchDetails: any = {};
         try {
-          const matchRes = await fetch(`http://localhost:5001/api/matches/${matchId}/info`);
+          const matchRes = await authFetch(`/matches/${matchId}/info`);
           if (matchRes.ok) {
             matchJson = await matchRes.json();
             console.log("📦 Info del match obtenida");
@@ -27,7 +28,7 @@ export const useEvents = (matchId: number) => {
         }
         // Intentar obtener los delays y demás campos desde /matches/:id (incluye global_delay_seconds)
         try {
-          const detailRes = await fetch(`http://localhost:5001/api/matches/${matchId}`);
+          const detailRes = await authFetch(`/matches/${matchId}`);
           if (detailRes.ok) {
             matchDetails = await detailRes.json();
             console.log("📦 Detalle del match obtenido (incluye delays)");
@@ -59,4 +60,3 @@ export const useEvents = (matchId: number) => {
     enabled: !!matchId,
   });
 };
-

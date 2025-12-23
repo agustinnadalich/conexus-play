@@ -4,6 +4,10 @@ import { FiBarChart2, FiBook, FiHome, FiLayers, FiPlus, FiSettings, FiShuffle } 
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import Layout from "@/components/Layout";
+import { useAuth } from "@/context/AuthContext";
+import { fetchMatches } from "@/api/api";
+import { useClub } from "@/context/ClubContext";
+import { authFetch } from "@/api/api";
 
 type Match = {
   id: number;
@@ -20,16 +24,30 @@ const SidebarNav = () => {
   const items = [
     { label: "Dashboard", to: "/dashboard", icon: FiHome },
     { label: "Administrar partidos", to: "/admin/matches", icon: FiSettings },
-    { label: "Mapeos", to: "/admin/mappings", icon: FiLayers },
     { label: "Importar partido", to: "/import", icon: FiShuffle },
-    { label: "Crear perfil", to: "/create-profile", icon: FiBook },
   ];
+  const { user } = useAuth();
+  const isSuperAdmin = user?.global_role === "super_admin";
+  const isClubAdmin = user?.memberships?.some((m) => m.role === "club_admin" && m.is_active);
+  const extra = [];
+  if (isSuperAdmin) {
+    extra.push({ label: "Mapeos", to: "/admin/mappings", icon: FiLayers });
+    extra.push({ label: "Crear perfil", to: "/create-profile", icon: FiBook });
+  }
+  if (isSuperAdmin) {
+    extra.push({ label: "Usuarios", to: "/admin/users", icon: FiSettings });
+    extra.push({ label: "Clubes", to: "/admin/clubs", icon: FiSettings });
+    extra.push({ label: "Equipos", to: "/admin/teams", icon: FiSettings });
+  } else if (isClubAdmin) {
+    extra.push({ label: "Equipos", to: "/admin/teams", icon: FiSettings });
+  }
+  const effectiveItems = [...items, ...extra];
 
   return (
     <aside className="sticky top-6 h-[calc(100vh-2rem)] w-64 rounded-2xl border border-slate-200 bg-white/70 p-4 shadow-sm backdrop-blur">
       <div className="mb-3 text-sm font-semibold text-slate-700">Menú</div>
       <nav className="space-y-2">
-        {items.map((item) => (
+        {effectiveItems.map((item) => (
           <button
             key={item.to}
             onClick={() => navigate(item.to)}
@@ -49,13 +67,40 @@ const DashboardShell = () => {
   const [matches, setMatches] = useState<Match[]>([]);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [search, setSearch] = useState("");
+  const { user } = useAuth();
+  const [clubName, setClubName] = useState<string | null>(null);
+  const [clubLogo, setClubLogo] = useState<string | null>(null);
+  const { allowedClubs, activeClubId, setActiveClubId, branding } = useClub();
 
   useEffect(() => {
-    fetch("http://localhost:5001/api/matches")
-      .then((res) => res.json())
+    fetchMatches(activeClubId ? { club_id: activeClubId } : {})
       .then((data) => setMatches(data || []))
       .catch(() => setMatches([]));
-  }, []);
+  }, [activeClubId]);
+
+  useEffect(() => {
+    const loadClub = async () => {
+      try {
+        if (!activeClubId) {
+          setClubName(null);
+          setClubLogo(null);
+          return;
+        }
+        const club = allowedClubs.find((c) => c.id === activeClubId);
+        if (club) {
+          setClubName(club.name);
+          setClubLogo(club.logo_url || null);
+        } else {
+          setClubName(null);
+          setClubLogo(null);
+        }
+      } catch {
+        setClubName(null);
+        setClubLogo(null);
+      }
+    };
+    loadClub();
+  }, [allowedClubs, activeClubId]);
 
   const filteredMatches = useMemo(() => {
     const sorted = [...matches].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -88,6 +133,48 @@ const DashboardShell = () => {
   return (
     <Layout title="Dashboard" subtitle="Partidos disponibles" hideHeader>
       <div className="flex flex-col gap-6 py-4">
+        <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm backdrop-blur">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 font-semibold">
+              {user?.full_name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || "U"}
+            </div>
+            <div>
+              <div className="text-sm text-slate-500">Sesión activa</div>
+              <div className="text-base font-semibold text-slate-900">{user?.email}</div>
+            </div>
+          </div>
+          {clubName && (
+            <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+              {clubLogo ? (
+                <img src={clubLogo} alt={clubName} className="h-10 w-10 object-contain rounded" />
+              ) : (
+                <div className="h-10 w-10 rounded bg-slate-200 flex items-center justify-center text-slate-600 font-bold">
+                  {clubName[0]}
+                </div>
+              )}
+              <div>
+                <div className="text-xs text-slate-500">Club activo</div>
+                <div className="text-sm font-semibold text-slate-900">{clubName}</div>
+              </div>
+            </div>
+          )}
+          {allowedClubs.length > 1 && (
+            <div className="ml-auto">
+              <select
+                className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                value={activeClubId ?? ""}
+                onChange={(e) => setActiveClubId(e.target.value ? Number(e.target.value) : null)}
+              >
+                {user?.global_role === "super_admin" && <option value="">Todos</option>}
+                {allowedClubs.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
         <div className="flex flex-col gap-4 lg:flex-row">
           <SidebarNav />
           <div className="flex-1 space-y-4">

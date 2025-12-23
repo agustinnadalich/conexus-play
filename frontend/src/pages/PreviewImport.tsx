@@ -5,11 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { authFetch } from "@/api/api";
 
 const PreviewImport = () => {
   const { state } = useLocation();
   const navigate = useNavigate();
-  const { previewData, profile } = state || {};
+  const { previewData, profile, teamId } = state || {};
 
   const [matchInfo, setMatchInfo] = useState(previewData?.match_info || {});
   const [events, setEvents] = useState(previewData?.events || []);
@@ -48,7 +49,6 @@ const PreviewImport = () => {
 
   // Definir los campos del modelo Match con etiquetas amigables
   const matchFields = [
-    { key: "team", label: "Equipo", required: true },
     { key: "opponent_name", label: "Rival", required: true },
     { key: "date", label: "Fecha", required: true, type: "date" },
     { key: "location", label: "Ubicación", required: false },
@@ -108,19 +108,21 @@ const PreviewImport = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch("http://localhost:5001/api/save_match", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          match: {
+        const res = await authFetch("/save_match", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            match: {
             ...matchInfo,
+            ...(matchInfo.team ? { team: undefined } : {}), // ignorar campo texto de equipo
             // Incluir tiempos manuales si el perfil los requiere
             ...(isManualProfile && { manual_period_times: manualTimes })
-          }, 
-          events: eventsToImport,
-          profile: profile?.name || profile  // Enviar solo el nombre del perfil
-        })
-      });
+            }, 
+            events: eventsToImport,
+            profile: profile?.name || profile,  // Enviar solo el nombre del perfil
+            team_id: teamId ? Number(teamId) : undefined,
+          })
+        });
       if (!res.ok) {
         const msg = await res.text();
         throw new Error(msg || "Error al guardar los datos");
@@ -207,8 +209,10 @@ const PreviewImport = () => {
     };
 
     try {
-      const res = await fetch('http://localhost:5001/api/import/profiles', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(profilePayload)
+      const res = await authFetch('/import/profiles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profilePayload)
       });
       if (!res.ok) throw new Error('Error saving profile');
       alert('Perfil guardado');

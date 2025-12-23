@@ -1,7 +1,8 @@
-from sqlalchemy import Column, Integer, String, Date, ForeignKey, Float, Text, JSON
+from sqlalchemy import Column, Integer, String, Date, ForeignKey, Float, Text, JSON, Boolean, DateTime
 from sqlalchemy.orm import relationship
 from db import Base
 from sqlalchemy.dialects.postgresql import JSONB
+from datetime import datetime
 
 
 class Club(Base):
@@ -9,8 +10,120 @@ class Club(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False, unique=True)
+    logo_url = Column(Text)
+    primary_color = Column(String(20))
+    secondary_color = Column(String(20))
+    accent_color = Column(String(20))
+    landing_copy = Column(Text)
 
     teams = relationship("Team", back_populates="club")
+    memberships = relationship("ClubMembership", back_populates="club")
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True)
+    email = Column(String(255), nullable=False, unique=True, index=True)
+    password_hash = Column(String(255), nullable=False)
+    full_name = Column(String(100))
+    is_active = Column(Boolean, default=True)
+    is_email_verified = Column(Boolean, default=False)
+    global_role = Column(String(50), default="user")  # super_admin | user
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    memberships = relationship("ClubMembership", back_populates="user")
+
+    def to_safe_dict(self):
+        return {
+            "id": self.id,
+            "email": self.email,
+            "full_name": self.full_name,
+            "is_active": self.is_active,
+            "is_email_verified": self.is_email_verified,
+            "global_role": self.global_role,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+class ClubMembership(Base):
+    __tablename__ = "club_memberships"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    club_id = Column(Integer, ForeignKey("clubs.id"), nullable=False)
+    role = Column(String(50), default="viewer")  # club_admin | analyst | viewer
+    can_edit = Column(Boolean, default=False)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("User", back_populates="memberships")
+    club = relationship("Club", back_populates="memberships")
+    team_scopes = relationship("MembershipTeamScope", back_populates="membership", cascade="all, delete-orphan")
+    match_scopes = relationship("MembershipMatchScope", back_populates="membership", cascade="all, delete-orphan")
+
+    def to_scope_dict(self):
+        return {
+            "id": self.id,
+            "club_id": self.club_id,
+            "role": self.role,
+            "can_edit": self.can_edit,
+            "team_ids": [t.team_id for t in self.team_scopes],
+            "match_ids": [m.match_id for m in self.match_scopes],
+            "is_active": self.is_active,
+        }
+
+
+class MembershipTeamScope(Base):
+    __tablename__ = "membership_team_scopes"
+
+    id = Column(Integer, primary_key=True)
+    membership_id = Column(Integer, ForeignKey("club_memberships.id"), nullable=False)
+    team_id = Column(Integer, ForeignKey("teams.id"), nullable=False)
+
+    membership = relationship("ClubMembership", back_populates="team_scopes")
+    team = relationship("Team")
+
+
+class MembershipMatchScope(Base):
+    __tablename__ = "membership_match_scopes"
+
+    id = Column(Integer, primary_key=True)
+    membership_id = Column(Integer, ForeignKey("club_memberships.id"), nullable=False)
+    match_id = Column(Integer, ForeignKey("matches.id"), nullable=False)
+
+    membership = relationship("ClubMembership", back_populates="match_scopes")
+    match = relationship("Match")
+
+
+class EmailVerificationToken(Base):
+    __tablename__ = "email_verification_tokens"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    token = Column(String(255), unique=True, nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    consumed_at = Column(DateTime)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User")
+
+
+class PasswordResetToken(Base):
+    __tablename__ = "password_reset_tokens"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    token = Column(String(255), unique=True, nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    consumed_at = Column(DateTime)
+    requested_from_ip = Column(String(64))
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User")
 
 
 class Team(Base):

@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { authFetch } from "@/api/api";
 
 interface Match {
   id: number;
@@ -78,20 +79,20 @@ const MatchesAdmin = () => {
     }, [selectedProfile, profiles, editingMatch]);
 
     const fetchMatches = async () => {
-    const res = await fetch("http://localhost:5001/api/matches");
-    const data = await res.json();
-    setMatches(data);
+        const res = await authFetch("/matches");
+        const data = await res.json();
+        setMatches(data);
     };
 
     const fetchProfiles = async () => {
-    const res = await fetch("http://localhost:5001/api/import/profiles");
-    const data = await res.json();
-    setProfiles(data);
+        const res = await authFetch("/import/profiles");
+        const data = await res.json();
+        setProfiles(data);
     };
 
     const fetchEventTypes = async (matchId: number) => {
         try {
-            const res = await fetch(`http://localhost:5001/api/matches/${matchId}/event-types`);
+            const res = await authFetch(`/matches/${matchId}/event-types`);
             const data = await res.json();
             if (res.ok) {
                 console.log('Event types loaded:', data.event_types);
@@ -115,7 +116,7 @@ const MatchesAdmin = () => {
         }
         
         try {
-            const response = await fetch(`http://localhost:5001/api/matches/${id}`, { 
+            const response = await authFetch(`/matches/${id}`, { 
                 method: "DELETE" 
             });
             
@@ -156,7 +157,7 @@ const MatchesAdmin = () => {
             event_delays: eventDelays
         };
 
-        const res = await fetch(`http://localhost:5001/api/matches/${id}`, {
+        const res = await authFetch(`/matches/${id}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(updatedMatchData),
@@ -213,7 +214,7 @@ const MatchesAdmin = () => {
 
             console.log("💾 Guardando tiempos del partido:", matchData);
 
-            const res = await fetch(`http://localhost:5001/api/matches/${editingMatch.id}`, {
+            const res = await authFetch(`/matches/${editingMatch.id}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(matchData),
@@ -227,7 +228,7 @@ const MatchesAdmin = () => {
             console.log("✅ Tiempos guardados, recalculando Game_Time...");
 
             // Recalcular los Game_Time de todos los eventos
-            const recalcRes = await fetch(`http://localhost:5001/api/matches/${editingMatch.id}/recalculate-times`, {
+            const recalcRes = await authFetch(`/matches/${editingMatch.id}/recalculate-times`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" }
             });

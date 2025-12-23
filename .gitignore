@@ -20,6 +20,15 @@ build/
 env/
 venv/
 *.sqlite3
+*.db
+
+# Archivos temporales
+*.tmp
+*.temp
+test_*.py
+test_*.json
+test_*.xlsx
+test_*.sh
 
 # Node.js
 node_modules/

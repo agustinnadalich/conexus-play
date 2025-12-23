@@ -10,6 +10,7 @@ import MatchReportRight from "../components/MatchReportRight.tsx";
 import Header from "../components/Header.tsx";
 import Sidebar from "../components/Sidebar.tsx";
 import { FilterProvider } from "../context/FilterContext.tsx";
+import { authFetch } from "@/api/api";
 import './VideoAnalysisPage.css';
 
 library.add(faBars, faTimes, faPlay, faPause, faStop, faForward, faBackward, faStepBackward, faStepForward, faChevronLeft, faExternalLinkAlt, faFilter, faSpinner);
@@ -35,7 +36,7 @@ const VideoAnalysisPage = () => {
   useEffect(() => {
     const fetchMatchData = async () => {
       try {
-        const response = await fetch(`http://localhost:5001/api/matches/${id}/events`); // Corregido el endpoint
+        const response = await authFetch(`/matches/${id}/events`);
         const matchData = await response.json();
         console.log("VideoAnalysisPage - Fetched data:", matchData);
         

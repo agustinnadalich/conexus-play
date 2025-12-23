@@ -235,6 +235,7 @@ def import_match_from_json(json_data: dict, profile: dict):
     db = SessionLocal()
     try:
         match_info = json_data.get("match", {})
+        provided_team_id = json_data.get("team_id") or match_info.get("team_id")
         events = json_data.get("events", [])
         
         # Usar datos del perfil si no están en match_info
@@ -254,20 +255,31 @@ def import_match_from_json(json_data: dict, profile: dict):
             print(f"❌ Error en enriquecimiento de eventos: {enrich_error}")
             return False
 
-        # Crear o buscar club/equipo/partido
-        club = db.query(Club).filter_by(name=match_info["team"]).first()
-        if not club:
-            club = Club(name=match_info["team"])
-            db.add(club)
-            db.commit()
-            print(f"✅ Club creado: {club.name}")
+        # Resolver club/equipo/partido
+        team = None
+        club = None
+        if provided_team_id:
+            team = db.query(Team).get(provided_team_id)
+            if not team:
+                raise ValueError(f"team_id {provided_team_id} no encontrado")
+            club = db.query(Club).get(team.club_id) if team.club_id else None
+            # Ajustar nombre de team en match_info para logs/consistencia
+            match_info["team"] = team.name
+        else:
+            # fallback legacy: crear/usar por nombre
+            club = db.query(Club).filter_by(name=match_info["team"]).first()
+            if not club:
+                club = Club(name=match_info["team"])
+                db.add(club)
+                db.commit()
+                print(f"✅ Club creado: {club.name}")
 
-        team = db.query(Team).filter_by(name=match_info["team"], club_id=club.id).first()
-        if not team:
-            team = Team(name=match_info["team"], club_id=club.id, category="Senior", season=str(match_info["date"][:4]))
-            db.add(team)
-            db.commit()
-            print(f"✅ Equipo creado: {team.name}")
+            team = db.query(Team).filter_by(name=match_info["team"], club_id=club.id).first()
+            if not team:
+                team = Team(name=match_info["team"], club_id=club.id, category="Senior", season=str(match_info["date"][:4]))
+                db.add(team)
+                db.commit()
+                print(f"✅ Equipo creado: {team.name}")
 
         match_date = datetime.strptime(match_info["date"], "%Y-%m-%d").date()
         match = Match(

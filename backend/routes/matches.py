@@ -1,18 +1,65 @@
+import os
 from flask import Blueprint, jsonify, request
 from db import SessionLocal
 from models import Match, Team, Event
+from auth_utils import (
+    get_current_user,
+    user_is_super_admin,
+    user_can_view_match,
+    user_can_edit_match,
+    user_is_club_admin,
+)
 
 match_bp = Blueprint('match_bp', __name__)
+AUTH_ENABLED = os.getenv("AUTH_ENABLED", "true").lower() == "true"
 
 @match_bp.route('/matches', methods=['GET'])
 def get_matches():
     db = SessionLocal()
     try:
-        matches = db.query(Match).all()
+        club_filter = request.args.get('club_id', type=int)
+        if AUTH_ENABLED:
+            user, _ = get_current_user(db)
+            if not user:
+                return jsonify({"error": "No autorizado"}), 401
+
+            if user_is_super_admin(user):
+                q = db.query(Match).join(Team, isouter=True)
+                if club_filter:
+                    q = q.filter(Team.club_id == club_filter)
+                matches = q.all()
+            else:
+                memberships = [m for m in user.memberships if m.is_active]
+                if not memberships:
+                    return jsonify([])
+                club_ids = {m.club_id for m in memberships}
+                match_ids_scope = {mm.match_id for m in memberships for mm in m.match_scopes}
+                team_ids_scope = {tt.team_id for m in memberships for tt in m.team_scopes}
+
+                q = db.query(Match).join(Team)
+                q = q.filter(Team.club_id.in_(club_ids))
+                if club_filter:
+                    q = q.filter(Team.club_id == club_filter)
+                # excluir partidos sin equipo
+                q = q.filter(Match.team_id.isnot(None))
+                from sqlalchemy import or_
+                conditions = []
+                if match_ids_scope:
+                    conditions.append(Match.id.in_(match_ids_scope))
+                if team_ids_scope:
+                    conditions.append(Match.team_id.in_(team_ids_scope))
+                if conditions:
+                    q = q.filter(or_(*conditions))
+                matches = q.all()
+        else:
+            q = db.query(Match).join(Team, isouter=True)
+            if club_filter:
+                q = q.filter(Team.club_id == club_filter)
+            matches = q.all()
+
         result = []
         for m in matches:
             match_dict = m.to_dict()
-            # Agregar campos adicionales
             match_dict["team"] = m.team.name if m.team else None
             match_dict["opponent"] = m.opponent_name
             result.append(match_dict)
@@ -28,6 +75,12 @@ def get_match(id):
         match = db.query(Match).get(id)
         if not match:
             return jsonify({"error": "Partido no encontrado"}), 404
+        if AUTH_ENABLED:
+            user, _ = get_current_user(db)
+            if not user:
+                return jsonify({"error": "No autorizado"}), 401
+            if not user_can_view_match(user, match):
+                return jsonify({"error": "Sin permiso para ver este partido"}), 403
 
         result = match.to_dict()
         print(f"DEBUG: Resultado de to_dict(): {result}")
@@ -82,11 +135,34 @@ def update_match(id):
         match = db.query(Match).get(id)
         if not match:
             return jsonify({"error": "Partido no encontrado"}), 404
+        if AUTH_ENABLED:
+            user, _ = get_current_user(db)
+            if not user:
+                return jsonify({"error": "No autorizado"}), 401
+            if not user_can_edit_match(user, match):
+                return jsonify({"error": "Sin permiso para editar este partido"}), 403
 
         data = request.get_json()
         print(f"DEBUG: Datos recibidos: {data}")
         print(f"DEBUG: Keys en data: {list(data.keys())}")
-        
+
+        # Permisos según club del partido o del team a asignar
+        target_team = None
+        target_club_id = match.team.club_id if match.team else None
+        if data.get('team_id'):
+            target_team = db.query(Team).get(data['team_id'])
+            if not target_team:
+                return jsonify({"error": "Equipo no encontrado"}), 404
+            target_club_id = target_team.club_id
+
+        if AUTH_ENABLED:
+            user, _ = get_current_user(db)
+            if not user:
+                return jsonify({"error": "No autorizado"}), 401
+            # permitir si super_admin o club_admin del club objetivo
+            if not (user_is_super_admin(user) or (target_club_id and user_is_club_admin(user, target_club_id)) or user_can_edit_match(user, match)):
+                return jsonify({"error": "Sin permiso para editar este partido"}), 403
+
         # Actualizar campos de tiempos manuales si se proporcionan
         if 'kick_off_1_seconds' in data:
             match.kick_off_1_seconds = data['kick_off_1_seconds']
@@ -108,6 +184,10 @@ def update_match(id):
         if 'event_delays' in data:
             match.event_delays = data['event_delays']
             print(f"DEBUG: Actualizando event_delays = {data['event_delays']}")
+
+        if 'team_id' in data:
+            match.team_id = data['team_id']
+            print(f"DEBUG: Actualizando team_id = {data['team_id']}")
         
         print(f"DEBUG: Valores después de actualización - global_delay: {match.global_delay_seconds}, event_delays: {match.event_delays}")
         
@@ -118,6 +198,7 @@ def update_match(id):
         result = {
             "id": match.id,
             "team": match.team.name if match.team else None,
+            "team_id": match.team_id,
             "opponent": match.opponent_name,
             "date": match.date.isoformat() if match.date is not None else None,
             "location": match.location,
@@ -158,6 +239,12 @@ def delete_match(id):
         match = db.query(Match).get(id)
         if not match:
             return jsonify({"error": "Partido no encontrado"}), 404
+        if AUTH_ENABLED:
+            user, _ = get_current_user(db)
+            if not user:
+                return jsonify({"error": "No autorizado"}), 401
+            if not user_can_edit_match(user, match):
+                return jsonify({"error": "Sin permiso para eliminar este partido"}), 403
 
         # Eliminar eventos asociados primero (por la restricción de clave foránea)
         events_count = db.query(Event).filter(Event.match_id == id).count()
@@ -193,6 +280,12 @@ def recalculate_match_times(id):
         match = db.query(Match).get(id)
         if not match:
             return jsonify({"error": "Partido no encontrado"}), 404
+        if AUTH_ENABLED:
+            user, _ = get_current_user(db)
+            if not user:
+                return jsonify({"error": "No autorizado"}), 401
+            if not user_can_edit_match(user, match):
+                return jsonify({"error": "Sin permiso para editar este partido"}), 403
         
         # 2. Obtener todos los eventos del partido
         events = db.query(Event).filter(Event.match_id == id).order_by(Event.timestamp_sec).all()
@@ -328,5 +421,3 @@ def recalculate_match_times(id):
 
 
 __all__ = ['match_bp']
-
-

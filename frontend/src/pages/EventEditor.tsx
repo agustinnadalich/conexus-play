@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
+import { authFetch } from "@/api/api";
 
 type EventRow = {
   id: number;
@@ -15,7 +16,6 @@ type EventRow = {
 
 const EventEditor: React.FC = () => {
   const { matchId } = useParams<{ matchId: string }>();
-  const apiBase = import.meta.env.VITE_API_URL || "http://localhost:5001";
   const [events, setEvents] = useState<EventRow[]>([]);
   const [edited, setEdited] = useState<Record<number, Partial<EventRow>>>({});
   const [status, setStatus] = useState<string>("");
@@ -40,7 +40,7 @@ const EventEditor: React.FC = () => {
       if (!matchId) return;
       setLoading(true);
       try {
-        const res = await fetch(`${apiBase}/api/matches/${matchId}/events`);
+        const res = await authFetch(`/matches/${matchId}/events`);
         const data = await res.json();
         setEvents(data.events || []);
       } catch (err: any) {
@@ -219,7 +219,7 @@ const EventEditor: React.FC = () => {
     }
     setStatus("Guardando...");
     try {
-      const res = await fetch(`${apiBase}/api/matches/${matchId}/events/bulk_update`, {
+      const res = await authFetch(`/matches/${matchId}/events/bulk_update`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ updates }),
@@ -228,7 +228,7 @@ const EventEditor: React.FC = () => {
       if (!res.ok) throw new Error(json.error || "Error al guardar");
       setStatus(json.message || "Cambios guardados");
       // refrescar eventos
-      const reload = await fetch(`${apiBase}/api/matches/${matchId}/events`);
+      const reload = await authFetch(`/matches/${matchId}/events`);
       const data = await reload.json();
       setEvents(data.events || []);
       setEdited({});

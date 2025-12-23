@@ -6,10 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { authFetch } from "@/api/api";
 
 type Match = {
   id: number;
   team: string;
+  team_id?: number;
   opponent: string;
   date: string;
   location: string;
@@ -33,6 +35,12 @@ type ImportProfile = {
   description: string;
 };
 
+type Team = {
+  id: number;
+  name: string;
+  club_id: number;
+};
+
 const EditMatch = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -51,16 +59,19 @@ const EditMatch = () => {
   const [eventDelays, setEventDelays] = useState<Record<string, number>>({});
   const [newEventType, setNewEventType] = useState("");
   const [newEventDelay, setNewEventDelay] = useState(0);
+  const [teams, setTeams] = useState<Team[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [matchRes, profilesRes] = await Promise.all([
-          fetch(`http://localhost:5001/api/matches/${id}`),
-          fetch("http://localhost:5001/api/import/profiles"),
+        const [matchRes, profilesRes, teamsRes] = await Promise.all([
+          authFetch(`/matches/${id}`),
+          authFetch("/import/profiles"),
+          authFetch("/teams"),
         ]);
         const matchData = await matchRes.json();
         const profileData = await profilesRes.json();
+        const teamsData = await teamsRes.json();
         if (!matchRes.ok) throw new Error(matchData.error || "No se pudo cargar el partido");
         setMatch(matchData);
         setManualTimes({
@@ -72,6 +83,8 @@ const EditMatch = () => {
         setGlobalDelay(matchData.global_delay_seconds || 0);
         setEventDelays(matchData.event_delays || {});
         setProfiles(profileData || []);
+        setTeams(teamsData.teams || []);
+        setMatch((prev) => ({ ...(prev || matchData), team_id: matchData.team_id } as any));
       } catch (e: any) {
         setError(e.message);
       } finally {
@@ -92,7 +105,7 @@ const EditMatch = () => {
     setError(null);
     try {
       const { id: matchId, ...payload } = match;
-      const res = await fetch(`http://localhost:5001/api/matches/${matchId}`, {
+      const res = await authFetch(`/matches/${matchId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -104,6 +117,7 @@ const EditMatch = () => {
           end_2_seconds: manualTimes.end_2,
           global_delay_seconds: globalDelay,
           event_delays: eventDelays,
+          team_id: (match as any).team_id,
         }),
       });
       const data = await res.json();
@@ -138,7 +152,22 @@ const EditMatch = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label>Equipo</Label>
-                  <Input value={match.team || ""} onChange={(e) => handleChange("team", e.target.value)} />
+                  <Select
+                    value={match.team_id ? String(match.team_id) : "none"}
+                    onValueChange={(v) => setMatch({ ...match, team_id: v === "none" ? undefined : Number(v) })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sin equipo asignado" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Sin equipo</SelectItem>
+                      {teams.map((t) => (
+                        <SelectItem key={t.id} value={String(t.id)}>
+                          {t.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <Label>Rival</Label>

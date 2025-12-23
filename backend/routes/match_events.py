@@ -1,3 +1,4 @@
+import os
 from flask import Blueprint, jsonify, request
 from sqlalchemy.orm import Session
 from db import SessionLocal
@@ -6,10 +7,12 @@ import math
 import pandas as pd
 from enricher import enrich_events
 import json
+from auth_utils import get_current_user, user_can_view_match, user_is_super_admin, user_can_edit_match
 
 print("🔍 DEBUG: match_events.py se está cargando")
 
 match_events_bp = Blueprint('match_events', __name__)
+AUTH_ENABLED = os.getenv("AUTH_ENABLED", "true").lower() == "true"
 
 def safe_serialize(obj):
     """Función segura para serializar objetos a JSON"""
@@ -51,10 +54,16 @@ def get_match_events(match_id):
     """Obtener eventos de un partido específico"""
     db = SessionLocal()
     try:
+        if AUTH_ENABLED:
+            user, _ = get_current_user(db)
+            if not user:
+                return jsonify({"error": "No autorizado"}), 401
         # Obtener el partido
         match = db.query(Match).filter(Match.id == match_id).first()
         if not match:
             return jsonify({"error": "Partido no encontrado"}), 404
+        if AUTH_ENABLED and not user_can_view_match(user, match):
+            return jsonify({"error": "Sin permiso para ver este partido"}), 403
 
         # Obtener eventos del partido
         events = db.query(Event).filter(Event.match_id == match_id).all()
@@ -129,26 +138,37 @@ def get_multi_match_events():
     Query params: match_ids=1,2,3 o match_id=1&match_id=2
     Cada evento se enriquece con metadata del partido (label, video_url).
     """
-    raw_ids = request.args.getlist('match_id') + request.args.getlist('match_ids')
-    match_ids = []
-    for rid in raw_ids:
-        # Permitir "1,2,3" y valores sueltos
-        parts = str(rid).split(',')
-        for p in parts:
-            try:
-                match_ids.append(int(p))
-            except ValueError:
-                continue
-
-    if not match_ids:
-        return jsonify({"error": "Debe enviar al menos un match_id"}), 400
-
+    user = None
     db = SessionLocal()
     try:
+        if AUTH_ENABLED:
+            user, _ = get_current_user(db)
+            if not user:
+                return jsonify({"error": "No autorizado"}), 401
+
+        raw_ids = request.args.getlist('match_id') + request.args.getlist('match_ids')
+        match_ids = []
+        for rid in raw_ids:
+            # Permitir "1,2,3" y valores sueltos
+            parts = str(rid).split(',')
+            for p in parts:
+                try:
+                    match_ids.append(int(p))
+                except ValueError:
+                    continue
+
+        if not match_ids:
+            return jsonify({"error": "Debe enviar al menos un match_id"}), 400
+
         # Obtener info de los partidos
         matches = db.query(Match).filter(Match.id.in_(match_ids)).all()
         if not matches:
             return jsonify({"events": [], "matches": []}), 200
+
+        if AUTH_ENABLED and not user_is_super_admin(user):
+            matches = [m for m in matches if user_can_view_match(user, m)]
+            if not matches:
+                return jsonify({"events": [], "matches": []}), 200
 
         match_meta = {}
         for m in matches:
@@ -615,9 +635,17 @@ def get_match_events_deprecated(match_id):
 def get_match_info(match_id):
     try:
         with SessionLocal() as session:
+            user = None
+            if AUTH_ENABLED:
+                user, _ = get_current_user(session)
             match = session.query(Match).filter(Match.id == match_id).first()
             if not match:
                 return jsonify({"error": "Match not found"}), 404
+            if AUTH_ENABLED:
+                if not user:
+                    return jsonify({"error": "No autorizado"}), 401
+                if not user_can_view_match(user, match):
+                    return jsonify({"error": "Sin permiso para ver este partido"}), 403
             
             return jsonify({
                 "id": match.id,
@@ -649,9 +677,17 @@ def update_match_info(match_id):
     try:
         data = request.get_json()
         with SessionLocal() as session:
+            user = None
+            if AUTH_ENABLED:
+                user, _ = get_current_user(session)
             match = session.query(Match).filter(Match.id == match_id).first()
             if not match:
                 return jsonify({"error": "Match not found"}), 404
+            if AUTH_ENABLED:
+                if not user:
+                    return jsonify({"error": "No autorizado"}), 401
+                if not user_can_edit_match(user, match):
+                    return jsonify({"error": "Sin permiso para editar este partido"}), 403
             
             if 'video_url' in data:
                 match.video_url = data['video_url']
@@ -678,9 +714,17 @@ def update_match_video(match_id):
         video_url = data.get('video_url')
         
         with SessionLocal() as session:
+            user = None
+            if AUTH_ENABLED:
+                user, _ = get_current_user(session)
             match = session.query(Match).filter(Match.id == match_id).first()
             if not match:
                 return jsonify({"error": "Match not found"}), 404
+            if AUTH_ENABLED:
+                if not user:
+                    return jsonify({"error": "No autorizado"}), 401
+                if not user_can_edit_match(user, match):
+                    return jsonify({"error": "Sin permiso para editar este partido"}), 403
             
             match.video_url = video_url
             session.commit()
