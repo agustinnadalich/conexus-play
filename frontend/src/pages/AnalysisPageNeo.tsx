@@ -79,13 +79,13 @@ const AnalysisPageNeoContent = () => {
         <div className="flex items-center gap-2">
           <Link
             to={`/analysis/${matchId}`}
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            className="rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-100 hover:border-cyan-200/50 hover:bg-white/10"
           >
             Volver a vista clásica
           </Link>
           <Link
             to="/multi-match-report"
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            className="rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-100 hover:border-cyan-200/50 hover:bg-white/10"
           >
             MultiMatch
           </Link>

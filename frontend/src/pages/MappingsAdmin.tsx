@@ -171,8 +171,8 @@ const MappingsAdmin: React.FC = () => {
               Volver
             </Button>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Mapeos de Categorías</h1>
-              <p className="text-gray-600 mt-1">
+              <h1 className="text-3xl font-bold text-white">Mapeos de Categorías</h1>
+              <p className="text-slate-300 mt-1">
                 Unifica terminología de diferentes analistas, entrenadores, idiomas y software
               </p>
               <p className="text-sm text-gray-500 mt-1">

@@ -37,7 +37,7 @@ const ScrumsDetailTabContent = ({
             <div className="flex items-center justify-between">
               <h4 className="font-semibold text-md">Tabla de eventos</h4>
               <button
-                className="text-sm px-3 py-1 rounded border border-gray-200 hover:bg-gray-50"
+                className="text-sm px-3 py-1 rounded border border-white/15 bg-white/5 text-slate-100 hover:border-cyan-200/50 hover:bg-white/10"
                 onClick={() => setShowTable((v) => !v)}
               >
                 {showTable ? "Ocultar" : "Mostrar"}

@@ -252,7 +252,7 @@ const ScrumDetailCharts: React.FC<Props> = ({ events, matchInfo, ourTeamsList = 
               );
             })}
         </div>
-        <div className="mt-2 w-full flex justify-center gap-4 text-xs text-gray-700 flex-wrap">
+        <div className="mt-2 w-full flex justify-center gap-4 text-xs text-slate-200 flex-wrap">
           <span className="inline-flex items-center gap-1"><span className="h-3 w-3 rounded-full" style={{ backgroundColor: "rgba(96, 165, 250, 0.85)" }}></span>Positivo</span>
           <span className="inline-flex items-center gap-1"><span className="h-3 w-3 rounded-full" style={{ backgroundColor: "rgba(252, 211, 77, 0.85)" }}></span>Neutro</span>
           <span className="inline-flex items-center gap-1"><span className="h-3 w-3 rounded-full" style={{ backgroundColor: "rgba(239, 68, 68, 0.85)" }}></span>Negativo</span>

@@ -352,8 +352,8 @@ const EventEditor: React.FC = () => {
               {filteredRows.map((ev, idx) => {
                 const e = edited[ev.id] || {};
                 const isSelected = selectedRowId === ev.id;
-                const zebra = idx % 2 === 0 ? "bg-white" : "bg-gray-100";
-                const rowClass = isSelected ? "bg-gray-300" : zebra;
+                const zebra = idx % 2 === 0 ? "bg-white/5" : "bg-white/[0.03]";
+                const rowClass = isSelected ? "bg-cyan-500/15 border border-cyan-300/30" : zebra;
                 return (
                   <tr
                     key={ev.id}

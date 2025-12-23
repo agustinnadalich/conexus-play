@@ -172,8 +172,30 @@ const VideoPlayer = (props: any) => {
     };
   };
 
-  const togglePiP = useCallback(() => setIsPiP((v) => !v), []);
-  const closePiP = useCallback(() => setIsPiP(false), []);
+  const togglePiP = useCallback(async () => {
+    // Prefer native PiP when available for HTML5 videos
+    const videoEl: any = videoRef.current;
+    if (!isYouTube && videoEl && "requestPictureInPicture" in videoEl) {
+      try {
+        if (document.pictureInPictureElement) {
+          await document.exitPictureInPicture();
+        } else {
+          await videoEl.requestPictureInPicture();
+        }
+        return;
+      } catch (err) {
+        console.warn("No se pudo usar PiP nativo, usando modo flotante", err);
+      }
+    }
+    setIsPiP((v) => !v);
+  }, [isYouTube]);
+
+  const closePiP = useCallback(() => {
+    if (document.pictureInPictureElement) {
+      document.exitPictureInPicture().catch(() => {});
+    }
+    setIsPiP(false);
+  }, []);
   const togglePipSize = useCallback(() => {
     setPipSize((s) => (s.width === 320 ? { width: 480, height: 270 } : { width: 320, height: 180 }));
   }, []);

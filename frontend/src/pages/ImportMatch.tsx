@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import Layout from "@/components/Layout";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { API_BASE, authFetch } from "@/api/api";
@@ -148,76 +149,78 @@ const ImportMatch = () => {
   if (profilesQuery.isError) return <div>Error al cargar perfiles.</div>;
 
   return (
-    <div className="max-w-2xl mx-auto p-4">
-      <h1 className="text-xl font-bold mb-4">Importar Partido</h1>
-
-      <Card>
-        <CardContent className="space-y-4 pt-6">
-          {/* Selector de perfil */}
-          <div>
-            <Label>Seleccionar Perfil</Label>
-            <select
-              value={selectedProfile}
-              onChange={(e) => setSelectedProfile(e.target.value)}
-              className="w-full border p-2 rounded"
-            >
-              <option value="">Seleccionar un perfil...</option>
-              {profilesQuery.data?.map((profile: any) => (
-                <option key={profile.name} value={profile.name}>
-                  {profile.name}
-                </option>
-              ))}
-            </select>
-            <p className="text-sm text-gray-500 mt-2">
-              {selectedProfile
-                ? `Usando perfil: ${selectedProfile}`
-                : "Por favor, selecciona un perfil para continuar."}
-            </p>
-          </div>
-
-          {/* Selector de equipo (opcional) */}
-          <div>
-            <Label>Equipo</Label>
-            <Select value={teamId} onValueChange={(v) => setTeamId(v)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccionar equipo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Sin equipo</SelectItem>
-                {teams.map((t: any) => (
-                  <SelectItem key={t.id} value={String(t.id)}>
-                    {t.name}
-                  </SelectItem>
+    <Layout title="Importar partido" subtitle="Sube archivos y genera previsualizaciones antes de importar">
+      <div className="max-w-3xl mx-auto">
+        <Card>
+          <CardContent className="space-y-5 pt-6">
+            {/* Selector de perfil */}
+            <div className="space-y-2">
+              <Label className="text-slate-200">Seleccionar Perfil</Label>
+              <select
+                value={selectedProfile}
+                onChange={(e) => setSelectedProfile(e.target.value)}
+                className="app-input"
+              >
+                <option value="">Seleccionar un perfil...</option>
+                {profilesQuery.data?.map((profile: any) => (
+                  <option key={profile.name} value={profile.name} className="bg-[#181E2F]">
+                    {profile.name}
+                  </option>
                 ))}
-              </SelectContent>
-            </Select>
-            <p className="text-sm text-gray-500 mt-2">
-              Puedes asignar un equipo existente o dejarlo “Sin equipo” y editarlo luego.
-            </p>
-          </div>
+              </select>
+              <p className="text-sm text-slate-300">
+                {selectedProfile
+                  ? `Usando perfil: ${selectedProfile}`
+                  : "Por favor, selecciona un perfil para continuar."}
+              </p>
+            </div>
 
-          {/* Subir archivo */}
-          <div>
-            <Label>Selecciona un archivo (.xlsx, .csv, .json, .xml)</Label>
-            <Input type="file" accept=".xlsx,.csv,.json,.xml" onChange={handleFileChange} />
-          </div>
+            {/* Selector de equipo (opcional) */}
+            <div className="space-y-2">
+              <Label className="text-slate-200">Equipo</Label>
+              <Select value={teamId} onValueChange={(v) => setTeamId(v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar equipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sin equipo</SelectItem>
+                  {teams.map((t: any) => (
+                    <SelectItem key={t.id} value={String(t.id)}>
+                      {t.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-slate-300">
+                Puedes asignar un equipo existente o dejarlo “Sin equipo” y editarlo luego.
+              </p>
+            </div>
 
-          {/* Botones */}
-          <div className="flex gap-4">
-            <Button onClick={() => navigate("/create-profile")}>Crear Nuevo Perfil</Button>
-            <Button onClick={handlePreview} disabled={!file || !selectedProfile}>
-              Previsualizar
-            </Button>
-            <Button onClick={handleFileUpload} disabled={!file || !selectedProfile}>
-              Subir Archivo
-            </Button>
-          </div>
+            {/* Subir archivo */}
+            <div className="space-y-2">
+              <Label className="text-slate-200">Selecciona un archivo (.xlsx, .csv, .json, .xml)</Label>
+              <Input type="file" accept=".xlsx,.csv,.json,.xml" onChange={handleFileChange} />
+            </div>
 
-          {/* Mensaje de error */}
-          {error && <p className="text-red-500">{error}</p>}
-        </CardContent>
-      </Card>
-    </div>
+            {/* Botones */}
+            <div className="flex flex-wrap gap-3">
+              <Button variant="secondary" onClick={() => navigate("/create-profile")}>
+                Crear Nuevo Perfil
+              </Button>
+              <Button onClick={handlePreview} disabled={!file || !selectedProfile}>
+                Previsualizar
+              </Button>
+              <Button onClick={handleFileUpload} disabled={!file || !selectedProfile}>
+                Subir Archivo
+              </Button>
+            </div>
+
+            {/* Mensaje de error */}
+            {error && <p className="text-red-400">{error}</p>}
+          </CardContent>
+        </Card>
+      </div>
+    </Layout>
   );
 };
 

@@ -1473,12 +1473,10 @@ const ChartsTabs = (_props: ChartsTabsProps) => {
 
       <TabsContent value="cards">
         <CardsTabContent hasCards={hasCards} effectiveEvents={effectiveEvents} onChartClick={handleChartClick} onEventClick={_props.onEventClick} />
-          onEventClick={_props.onEventClick}
       </TabsContent>
 
       <TabsContent value="turnovers">
         <TurnoversTabContent hasTurnovers={hasTurnovers} turnoverEvents={turnoverEvents} onChartClick={handleChartClick} onEventClick={_props.onEventClick} />
-          onEventClick={_props.onEventClick}
       </TabsContent>
 
       <TabsContent value="setpieces">

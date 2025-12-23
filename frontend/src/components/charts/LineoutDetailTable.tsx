@@ -211,7 +211,7 @@ const LineoutDetailTable: React.FC<LineoutDetailTableProps> = ({
   return (
     <div className="overflow-x-auto border rounded-lg">
       <table className="min-w-full text-sm">
-        <thead className="bg-gray-50 text-gray-700">
+        <thead className="bg-white/10 text-slate-200">
           <tr>
             <th className="px-3 py-2 text-left whitespace-nowrap">Equipo</th>
             <th className="px-3 py-2 text-left whitespace-nowrap">Tiempo</th>
@@ -232,7 +232,7 @@ const LineoutDetailTable: React.FC<LineoutDetailTableProps> = ({
           {rows.map((row) => (
             <tr
               key={row.key}
-              className={`border-t ${onRowClick ? "hover:bg-gray-50 cursor-pointer" : ""}`}
+              className={`border-t border-white/10 ${onRowClick ? "hover:bg-white/10 cursor-pointer" : ""}`}
               onClick={() => onRowClick?.(row.raw)}
             >
               <td className="px-3 py-2 whitespace-nowrap">{row.team || "-"}</td>
