@@ -14,22 +14,22 @@ type Props = {
 };
 
 const MultiMatchHeader: React.FC<Props> = ({ matches, selectedMatchIds, onToggleMatch }) => (
-  <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-    <h2 className="text-lg font-semibold text-slate-900 mb-3">Selecciona los partidos a mostrar</h2>
+  <div className="app-card p-4">
+    <h2 className="text-lg font-semibold text-white mb-3">Selecciona los partidos a mostrar</h2>
     <div className="flex flex-wrap gap-3">
       {matches.map((match) => {
         const label = `${match.team ?? "Equipo"} vs ${match.opponent ?? "Rival"}`;
         const dateLabel = match.date ? new Date(match.date).toLocaleDateString() : "";
         return (
-          <label key={match.id} className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm text-slate-700 shadow-sm">
+          <label key={match.id} className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-slate-100 shadow-sm backdrop-blur">
             <input
               type="checkbox"
               checked={selectedMatchIds.includes(match.id)}
               onChange={() => onToggleMatch(match.id)}
-              className="accent-blue-600"
+              className="accent-cyan-300"
             />
-            <span className="font-medium">{label}</span>
-            {dateLabel && <span className="text-xs text-slate-500">({dateLabel})</span>}
+            <span className="font-semibold">{label}</span>
+            {dateLabel && <span className="text-xs text-slate-300">({dateLabel})</span>}
           </label>
         );
       })}

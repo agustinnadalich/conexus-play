@@ -184,17 +184,22 @@ const PointsTypeChart = ({ events, onChartClick }) => {
           chart.update();
         },
         labels: {
+          color: '#e2e8f0',
           generateLabels: (chart) => {
             return [
               {
                 text: 'Our Team',
                 fillStyle: 'rgba(54, 162, 235, 1)',
+                color: '#e2e8f0',
+                fontColor: '#e2e8f0',
                 hidden: false,
                 index: 0,
               },
               {
                 text: 'Opponent',
                 fillStyle: 'rgba(255, 99, 132, 1)',
+                color: '#e2e8f0',
+                fontColor: '#e2e8f0',
                 hidden: false,
                 index: 1,
               },
@@ -205,6 +210,7 @@ const PointsTypeChart = ({ events, onChartClick }) => {
           title: {
           display: true,
           text: 'Points by Type',
+          color: '#e2e8f0',
           },
           tooltip: {
           callbacks: {
@@ -225,7 +231,7 @@ const PointsTypeChart = ({ events, onChartClick }) => {
           },
           },
           datalabels: {
-          color: 'grey',
+          color: '#e2e8f0',
           formatter: (value, context) => {
           const meta = context.chart.getDatasetMeta(context.datasetIndex);
           const element = meta.data[context.dataIndex];

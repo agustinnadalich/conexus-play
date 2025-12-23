@@ -99,23 +99,23 @@ const RucksFieldZonesChart: React.FC<Props> = ({ events, onChartClick }) => {
   const labels: string[] = chartData.labels || [];
 
   return (
-    <div className="space-y-3">
-      <div className="text-sm text-gray-700">
+    <div className="space-y-3 text-slate-100">
+      <div className="text-sm text-slate-200">
         Rucks totales: <strong>{totals.total}</strong> (Nosotros: {totals.our} · Rival: {totals.opp})
       </div>
 
       {/* Mini-cancha dividida en 4 con porcentajes */}
-      <div className="w-full rounded-lg border border-gray-200 overflow-hidden">
+      <div className="w-full rounded-lg border border-white/10 bg-white/5 overflow-hidden backdrop-blur">
         <div className="grid grid-cols-4">
           {labels.map((label, idx) => (
             <div
               key={label}
-              className="flex flex-col items-center justify-center gap-1 py-3 px-2 bg-gradient-to-b from-green-50 to-green-100 border-r border-gray-200 last:border-r-0"
+              className="flex flex-col items-center justify-center gap-1 py-3 px-2 bg-gradient-to-b from-white/10 to-white/[0.06] border-r border-white/10 last:border-r-0"
             >
-              <div className="text-[11px] text-gray-600 text-center leading-tight">{label}</div>
-              <div className="text-lg font-semibold text-gray-900">{totals.overallPerc?.[idx] ?? 0}%</div>
-              <div className="text-[11px] text-blue-700">Nos: {totals.percOurOfTeam?.[idx] ?? 0}%</div>
-              <div className="text-[11px] text-red-600">Riv: {totals.percOppOfTeam?.[idx] ?? 0}%</div>
+              <div className="text-[11px] text-slate-200 text-center leading-tight">{label}</div>
+              <div className="text-lg font-semibold text-white">{totals.overallPerc?.[idx] ?? 0}%</div>
+              <div className="text-[11px] text-cyan-200">Nos: {totals.percOurOfTeam?.[idx] ?? 0}%</div>
+              <div className="text-[11px] text-red-300">Riv: {totals.percOppOfTeam?.[idx] ?? 0}%</div>
             </div>
           ))}
         </div>

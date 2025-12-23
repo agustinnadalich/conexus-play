@@ -70,7 +70,7 @@ const PossessionShareChart: React.FC<Props> = ({ events, onChartClick }) => {
     onChartClick(event, elements, chart, 'possession', 'possession-tab', filters);
   };
 
-    if (!chartData) return <div className="text-center text-gray-500">No hay datos de ATTACK/DEFENSE para calcular posesión</div>;
+    if (!chartData) return <div className="text-center text-slate-200">No hay datos de ATTACK/DEFENSE para calcular posesión</div>;
 
   const formatSeconds = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -92,7 +92,7 @@ const PossessionShareChart: React.FC<Props> = ({ events, onChartClick }) => {
           onClick: handleClick,
         }}
       />
-      <div className="text-sm text-center text-gray-600">
+      <div className="text-sm text-center text-slate-200">
         Tiempo efectivo jugado: <strong>{formatSeconds(totals.total)}</strong> (Nosotros: {formatSeconds(totals.our)} · Rival: {formatSeconds(totals.opp)})
       </div>
     </div>

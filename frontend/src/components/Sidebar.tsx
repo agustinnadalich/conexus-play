@@ -344,14 +344,12 @@ const Sidebar = React.memo(({ sidebarOpen, setSidebarOpen }: { sidebarOpen: bool
     [filteredEvents]
   );
 
-
-
   return (
-    <div className="fixed md:relative md:translate-x-0 top-0 left-0 h-full w-64 bg-white border-r shadow z-40 transition-transform duration-300">
+    <div className="fixed md:relative md:translate-x-0 top-0 left-0 h-full w-64 bg-[#1c2235] border-r border-white/10 shadow-2xl z-40 transition-transform duration-300 text-slate-100">
       <div className="p-4 space-y-4">
         {/* Encabezado con botón de cerrar */}
         <div className="flex justify-between items-center">
-          <h2 className="font-bold text-lg">Filtros</h2>
+          <h2 className="font-bold text-lg text-white">Filtros</h2>
           <Button variant="ghost" size="sm" onClick={() => setSidebarOpen(false)}>
             <FiX size={22} />
           </Button>
@@ -360,11 +358,11 @@ const Sidebar = React.memo(({ sidebarOpen, setSidebarOpen }: { sidebarOpen: bool
         <div className="space-y-2">
           {/* Equipo */}
           <>
-            <label className="text-sm font-medium">Equipo</label>
+            <label className="text-sm font-semibold text-slate-200">Equipo</label>
             <select
               value={selectedTeam || ""}
               onChange={(e) => setSelectedTeam(e.target.value)}
-              className="w-full border rounded px-2 py-1 mb-4"
+              className="app-input mb-4"
             >
               <option value="">Todos</option>
               {equiposUnicos.map((team) => (
@@ -379,9 +377,9 @@ const Sidebar = React.memo(({ sidebarOpen, setSidebarOpen }: { sidebarOpen: bool
           </>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Descriptor</label>
+            <label className="block text-sm font-semibold text-slate-200 mb-1">Descriptor</label>
             <select
-              className="w-full border rounded px-2 py-1"
+              className="app-input"
               value={selectedDescriptor}
               onChange={(e) => setSelectedDescriptor(e.target.value)}
             >
@@ -396,11 +394,11 @@ const Sidebar = React.memo(({ sidebarOpen, setSidebarOpen }: { sidebarOpen: bool
 
           {selectedDescriptor && descriptorValues.length > 0 && (
             <div className="mt-4">
-              <label className="block text-sm font-medium mb-1">
+              <label className="block text-sm font-semibold text-slate-200 mb-1">
                 {selectedDescriptor === "player_name" ? "Jugadores" : "Valores"}
               </label>
               <select
-                className="w-full border rounded px-2 py-1"
+                className="app-input"
                 value={selectedValue}
                 onChange={(e) => setSelectedValue(e.target.value)}
               >
@@ -425,19 +423,19 @@ const Sidebar = React.memo(({ sidebarOpen, setSidebarOpen }: { sidebarOpen: bool
 
         {filterDescriptors.length > 0 && (
           <div className="space-y-1">
-            <h3 className="text-sm font-medium">Filtros activos</h3>
+            <h3 className="text-sm font-semibold text-slate-200">Filtros activos</h3>
             <div className="flex flex-wrap gap-2">
               {filterDescriptors.map((fd, i) => (
                 <span
                   key={`${fd.descriptor}-${fd.value}-${i}`}
-                  className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs flex items-center gap-1"
+                  className="px-2 py-1 rounded-full border border-cyan-300/40 bg-cyan-500/15 text-xs font-semibold text-cyan-100 flex items-center gap-1"
                 >
                   {fd.descriptor}: {fd.value}
                   <button
                     onClick={() =>
                       removeDescriptorFilter(fd.descriptor, fd.value)
                     }
-                    className="text-blue-600 hover:text-red-600"
+                    className="text-cyan-200 hover:text-red-300"
                   >
                     ×
                   </button>
@@ -448,10 +446,10 @@ const Sidebar = React.memo(({ sidebarOpen, setSidebarOpen }: { sidebarOpen: bool
         )}
 
         <div className="mt-4">
-          <h3 className="font-semibold text-sm mb-2">Categorías</h3>
+          <h3 className="font-semibold text-sm text-slate-200 mb-2">Categorías</h3>
           <select
             multiple
-            className="w-full border rounded px-2 py-1 h-32"
+            className="app-input h-32"
             value={filterCategory}
             onChange={(e) => {
               const options = Array.from(e.target.selectedOptions).map(
@@ -470,9 +468,9 @@ const Sidebar = React.memo(({ sidebarOpen, setSidebarOpen }: { sidebarOpen: bool
 
         {/* {playerNames.length > 0 && (
           <div className="mt-4">
-            <label className="block text-sm font-medium mb-1">Jugadores</label>
+            <label className="block text-sm font-semibold text-slate-200 mb-1">Jugadores</label>
             <select
-              className="w-full border rounded px-2 py-1"
+              className="app-input"
               value={selectedValue}
               onChange={(e) => setSelectedValue(e.target.value)}
             >
@@ -505,7 +503,7 @@ const Sidebar = React.memo(({ sidebarOpen, setSidebarOpen }: { sidebarOpen: bool
             ▶️ Reproducir filtrados
           </Button>
         </div>
-        <div className="mb-2 text-sm text-gray-600">
+        <div className="mb-2 text-sm text-slate-300">
           {filteredEvents.length} evento{filteredEvents.length !== 1 ? "s" : ""}{" "}
           filtrado{filteredEvents.length !== 1 ? "s" : ""}
         </div>

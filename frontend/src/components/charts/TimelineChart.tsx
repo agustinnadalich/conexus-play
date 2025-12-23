@@ -90,39 +90,39 @@ const TooltipContent = React.memo(({ active, payload }: any) => {
     const displayedDetails = otherDescriptors;
 
     return (
-      <div className="rounded bg-white p-3 shadow-lg border border-gray-300 text-sm max-w-md max-h-96 overflow-y-auto">
+      <div className="rounded-2xl bg-[#1c2235] p-3 shadow-2xl border border-white/10 text-sm text-slate-100 max-w-md max-h-96 overflow-y-auto">
         {matchLabel && (
-          <div className="text-xs font-semibold text-slate-700 mb-1">
-            Partido: <span className="text-slate-900">{matchLabel}</span>
+          <div className="text-xs font-semibold text-slate-200 mb-1">
+            Partido: <span className="text-white">{matchLabel}</span>
           </div>
         )}
-        <div className="font-bold text-base mb-2 text-blue-700">{event.category}</div>
+        <div className="font-bold text-base mb-2 text-cyan-200">{event.category}</div>
         
         {/* Información de tiempo */}
-        <div className="mb-2 pb-2 border-b border-gray-200">
+        <div className="mb-2 pb-2 border-b border-white/10">
           <div className="grid grid-cols-2 gap-1 text-xs">
             <div><strong>Timestamp:</strong> {secondsToGameClock(event.SECOND)}</div>
             <div><strong>Duración:</strong> {Math.round(event.DURATION * 10) / 10}s</div>
-            <div><strong>Game Time:</strong> <span className="text-green-600 font-semibold">{gameTime}</span></div>
-            <div><strong>Período:</strong> <span className="text-purple-600 font-semibold">{period}</span></div>
-            <div className="col-span-2"><strong>Bloque:</strong> <span className="text-orange-600 font-semibold">{timeGroup}</span></div>
+            <div><strong>Game Time:</strong> <span className="text-green-300 font-semibold">{gameTime}</span></div>
+            <div><strong>Período:</strong> <span className="text-purple-200 font-semibold">{period}</span></div>
+            <div className="col-span-2"><strong>Bloque:</strong> <span className="text-orange-200 font-semibold">{timeGroup}</span></div>
           </div>
         </div>
         
         {/* Jugador */}
         {playerInfo && (
-          <div className="mb-2 pb-2 border-b border-gray-200">
-            <div><strong>Jugador:</strong> <span className="text-blue-600 font-semibold">{playerInfo}</span></div>
+          <div className="mb-2 pb-2 border-b border-white/10">
+            <div><strong>Jugador:</strong> <span className="text-cyan-200 font-semibold">{playerInfo}</span></div>
           </div>
         )}
         
         {/* Todos los descriptores */}
         {displayedDetails.length > 0 && (
           <div>
-            <div className="font-semibold mb-1 text-gray-700">Descriptores:</div>
+            <div className="font-semibold mb-1 text-slate-200">Descriptores:</div>
             <div className="grid grid-cols-1 gap-0.5">
               {displayedDetails.map((desc, idx) => (
-                <div key={idx} className="text-xs text-gray-700 pl-2 py-0.5 hover:bg-gray-50">
+                <div key={idx} className="text-xs text-slate-100 pl-2 py-0.5 hover:bg-white/10 rounded">
                   • {desc}
                 </div>
               ))}
@@ -417,39 +417,39 @@ const TimelineChart = ({ filteredEvents, onEventClick }: { filteredEvents: Match
       const displayedDetails = otherDescriptors;
 
       return (
-        <div className="rounded bg-white p-3 shadow-lg border border-gray-300 text-sm max-w-md max-h-96 overflow-y-auto">
+        <div className="rounded-2xl bg-[#1c2235] p-3 shadow-2xl border border-white/10 text-sm text-slate-100 max-w-md max-h-96 overflow-y-auto">
         {matchLabel && (
-          <div className="text-xs font-semibold text-slate-700 mb-1">
-            Partido: <span className="text-slate-900">{matchLabel}</span>
+          <div className="text-xs font-semibold text-slate-200 mb-1">
+            Partido: <span className="text-white">{matchLabel}</span>
           </div>
         )}
-        <div className="font-bold text-base mb-2 text-blue-700">{event.category}</div>
+        <div className="font-bold text-base mb-2 text-cyan-200">{event.category}</div>
           
           {/* Información de tiempo */}
-          <div className="mb-2 pb-2 border-b border-gray-200">
+          <div className="mb-2 pb-2 border-b border-white/10">
             <div className="grid grid-cols-2 gap-1 text-xs">
               <div><strong>Timestamp:</strong> {secondsToGameClock(event.SECOND)}</div>
               <div><strong>Duración:</strong> {Math.round(event.DURATION * 10) / 10}s</div>
-              <div><strong>Game Time:</strong> <span className="text-green-600 font-semibold">{gameTime}</span></div>
-              <div><strong>Período:</strong> <span className="text-purple-600 font-semibold">{period}</span></div>
-              <div className="col-span-2"><strong>Bloque:</strong> <span className="text-orange-600 font-semibold">{timeGroup}</span></div>
+              <div><strong>Game Time:</strong> <span className="text-green-300 font-semibold">{gameTime}</span></div>
+              <div><strong>Período:</strong> <span className="text-purple-200 font-semibold">{period}</span></div>
+              <div className="col-span-2"><strong>Bloque:</strong> <span className="text-orange-200 font-semibold">{timeGroup}</span></div>
             </div>
           </div>
           
           {/* Jugador */}
           {playerInfo && (
-            <div className="mb-2 pb-2 border-b border-gray-200">
-              <div><strong>Jugador:</strong> <span className="text-blue-600 font-semibold">{playerInfo}</span></div>
+            <div className="mb-2 pb-2 border-b border-white/10">
+              <div><strong>Jugador:</strong> <span className="text-cyan-200 font-semibold">{playerInfo}</span></div>
             </div>
           )}
           
           {/* Todos los descriptores */}
           {displayedDetails.length > 0 && (
             <div>
-              <div className="font-semibold mb-1 text-gray-700">Descriptores:</div>
+              <div className="font-semibold mb-1 text-slate-200">Descriptores:</div>
               <div className="grid grid-cols-1 gap-0.5">
                 {displayedDetails.map((desc, idx) => (
-                  <div key={idx} className="text-xs text-gray-700 pl-2 py-0.5 hover:bg-gray-50">
+                  <div key={idx} className="text-xs text-slate-100 pl-2 py-0.5 hover:bg-white/10 rounded">
                     • {desc}
                   </div>
                 ))}
@@ -731,8 +731,15 @@ const TimelineChart = ({ filteredEvents, onEventClick }: { filteredEvents: Match
       <div ref={chartRef} style={{ height: `${chartHeight}px`, overflow: "visible" }}>
         <ResponsiveContainer width="100%" height="100%">
           <ScatterChart margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
-            <CartesianGrid />
-            <XAxis dataKey="game_time_sec" type="number" domain={xDomain} tickFormatter={(tick) => secondsToGameClock(tick)} />
+          <CartesianGrid stroke="rgba(255,255,255,0.08)" />
+            <XAxis
+              dataKey="game_time_sec"
+              type="number"
+              domain={xDomain}
+              tickFormatter={(tick) => secondsToGameClock(tick)}
+              tick={{ fill: "#cbd5e1", fontSize: 11 }}
+              axisLine={{ stroke: "rgba(255,255,255,0.2)" }}
+            />
             <YAxis
               type="category"
               dataKey="category"
@@ -744,7 +751,7 @@ const TimelineChart = ({ filteredEvents, onEventClick }: { filteredEvents: Match
                     y={0}
                     dy={4}
                     textAnchor="end"
-                    fill="#333"
+                    fill="#cbd5e1"
                     fontSize={10}
                     style={{ textDecoration: (filterCategory || []).map((c:any)=>(c||"").toString().trim().toUpperCase()).includes((payload.value||"").toString().trim().toUpperCase()) ? "underline" : "none" }}
                     onClick={() => handleCategoryClick(payload.value)}

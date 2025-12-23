@@ -262,12 +262,12 @@ const LineoutDetailCharts: React.FC<Props> = ({ events, matchInfo, ourTeamsList 
                       style={{ height: "100%", width: "100%" }}
                     />
                   </div>
-                  <div className="text-xs text-gray-600 mt-1">Eff {eff}%</div>
+                  <div className="text-xs text-slate-200 mt-1">Eff {eff}%</div>
                 </div>
               );
             })}
           </div>
-          <div className="mt-2 w-full flex justify-center gap-3 text-xs text-gray-700 flex-wrap">
+          <div className="mt-2 w-full flex justify-center gap-3 text-xs text-slate-200 flex-wrap">
             <span className="inline-flex items-center gap-1"><span className="h-3 w-3 rounded-full" style={{ backgroundColor: resultColors["Limpia"] }}></span>Limpia</span>
             <span className="inline-flex items-center gap-1"><span className="h-3 w-3 rounded-full" style={{ backgroundColor: resultColors["Sucia"] }}></span>Sucia</span>
             <span className="inline-flex items-center gap-1"><span className="h-3 w-3 rounded-full" style={{ backgroundColor: resultColors["Perdido"] }}></span>Perdido</span>

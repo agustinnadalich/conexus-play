@@ -73,7 +73,7 @@ const RucksSpeedPieChart: React.FC<Props> = ({ events, onChartClick }) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
       <div className="md:col-span-1 text-center space-y-2">
-        <div className="text-sm text-gray-600">Rucks por equipo</div>
+    <div className="text-sm text-slate-200">Rucks por equipo</div>
         <div className="text-lg font-semibold text-blue-700">Nosotros: {totalOur}</div>
         <div className="text-lg font-semibold text-red-500">Rival: {totalOpp}</div>
       </div>

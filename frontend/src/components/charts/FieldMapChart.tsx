@@ -241,8 +241,8 @@ const FieldMapChart: React.FC<FieldMapChartProps> = ({ events, matchInfo }) => {
 
   if (!events || events.length === 0) {
     return (
-      <div className="flex items-center justify-center h-96 bg-gray-100 rounded-lg">
-        <p className="text-gray-500">No hay eventos con coordenadas para mostrar</p>
+      <div className="flex items-center justify-center h-96 bg-white/5 border border-white/10 rounded-lg">
+        <p className="text-slate-200">No hay eventos con coordenadas para mostrar</p>
       </div>
     );
   }
@@ -253,8 +253,8 @@ const FieldMapChart: React.FC<FieldMapChartProps> = ({ events, matchInfo }) => {
 
   if (validEventsCount === 0) {
     return (
-      <div className="flex items-center justify-center h-96 bg-gray-100 rounded-lg">
-        <p className="text-gray-500">No hay eventos con coordenadas válidas</p>
+      <div className="flex items-center justify-center h-96 bg-white/5 border border-white/10 rounded-lg">
+        <p className="text-slate-200">No hay eventos con coordenadas válidas</p>
       </div>
     );
   }

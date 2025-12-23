@@ -90,12 +90,12 @@ const PenaltiesTeamPieChart: React.FC<Props> = ({
       const centerY = firstArc?.y ?? chartArea.top + chartArea.height / 2;
 
       ctx.save();
-      ctx.font = 'bold 14px Arial';
-      ctx.fillStyle = '#111827';
+      ctx.font = 'bold 14px Montserrat, Arial';
+      ctx.fillStyle = '#e2e8f0';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(`Nos: ${totals.our}`, centerX, centerY - 10);
-      ctx.fillStyle = '#dc2626';
+      ctx.fillStyle = '#fca5a5';
       ctx.fillText(`Rival: ${totals.opp}`, centerX, centerY + 10);
       ctx.restore();
     },
@@ -110,7 +110,7 @@ const PenaltiesTeamPieChart: React.FC<Props> = ({
           maintainAspectRatio: false,
           cutout: '60%',
           plugins: {
-            legend: { position: 'top' as const },
+            legend: { position: 'top' as const, labels: { color: '#e2e8f0' } },
             title: { display: true, text: title },
           },
           onClick: handleClick,

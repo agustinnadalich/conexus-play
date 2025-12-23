@@ -44,21 +44,25 @@ const SidebarNav = () => {
   const effectiveItems = [...items, ...extra];
 
   return (
-    <aside className="sticky top-6 h-[calc(100vh-2rem)] w-64 rounded-2xl border border-slate-200 bg-white/70 p-4 shadow-sm backdrop-blur">
-      <div className="mb-3 text-sm font-semibold text-slate-700">Menú</div>
+    <div className="space-y-3">
+      <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
+        Menú
+      </div>
       <nav className="space-y-2">
         {effectiveItems.map((item) => (
           <button
             key={item.to}
             onClick={() => navigate(item.to)}
-            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+            className="flex w-full items-center gap-3 rounded-xl border border-transparent px-3 py-2 text-left text-sm font-semibold text-slate-100 transition hover:border-white/10 hover:bg-white/5 hover:text-white"
           >
-            <item.icon className="h-4 w-4" />
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/5 text-cyan-200 shadow-inner">
+              <item.icon className="h-4 w-4" />
+            </span>
             {item.label}
           </button>
         ))}
       </nav>
-    </aside>
+    </div>
   );
 };
 
@@ -131,43 +135,48 @@ const DashboardShell = () => {
   };
 
   return (
-    <Layout title="Dashboard" subtitle="Partidos disponibles" hideHeader>
-      <div className="flex flex-col gap-6 py-4">
-        <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm backdrop-blur">
+    <Layout
+      title="Dashboard"
+      subtitle="Partidos disponibles y análisis rápidos"
+      showDashboardShortcut={false}
+      sidebar={<SidebarNav />}
+    >
+      <div className="flex flex-col gap-6">
+        <div className="app-card flex flex-wrap items-center gap-4 p-5">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 font-semibold">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-lg font-bold text-white shadow-inner">
               {user?.full_name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || "U"}
             </div>
             <div>
-              <div className="text-sm text-slate-500">Sesión activa</div>
-              <div className="text-base font-semibold text-slate-900">{user?.email}</div>
+              <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">Sesión activa</div>
+              <div className="text-base font-semibold text-white">{user?.email}</div>
             </div>
           </div>
           {clubName && (
-            <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+            <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 shadow-inner">
               {clubLogo ? (
-                <img src={clubLogo} alt={clubName} className="h-10 w-10 object-contain rounded" />
+                <img src={clubLogo} alt={clubName} className="h-10 w-10 object-contain rounded-lg bg-white/10 p-1" />
               ) : (
-                <div className="h-10 w-10 rounded bg-slate-200 flex items-center justify-center text-slate-600 font-bold">
+                <div className="h-10 w-10 rounded-lg bg-white/10 flex items-center justify-center text-slate-200 font-bold">
                   {clubName[0]}
                 </div>
               )}
               <div>
-                <div className="text-xs text-slate-500">Club activo</div>
-                <div className="text-sm font-semibold text-slate-900">{clubName}</div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">Club activo</div>
+                <div className="text-sm font-semibold text-white">{clubName}</div>
               </div>
             </div>
           )}
           {allowedClubs.length > 1 && (
             <div className="ml-auto">
               <select
-                className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                className="app-input w-48"
                 value={activeClubId ?? ""}
                 onChange={(e) => setActiveClubId(e.target.value ? Number(e.target.value) : null)}
               >
                 {user?.global_role === "super_admin" && <option value="">Todos</option>}
                 {allowedClubs.map((c) => (
-                  <option key={c.id} value={c.id}>
+                  <option key={c.id} value={c.id} className="bg-[#181E2F]">
                     {c.name}
                   </option>
                 ))}
@@ -175,123 +184,121 @@ const DashboardShell = () => {
             </div>
           )}
         </div>
-        <div className="flex flex-col gap-4 lg:flex-row">
-          <SidebarNav />
-          <div className="flex-1 space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h1 className="text-2xl font-bold text-slate-900">Partidos</h1>
-                <p className="text-sm text-slate-500">
-                  Busca, selecciona y navega a los análisis o al reporte MultiMatch.
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <input
-                  type="search"
-                  placeholder="Buscar por equipo, torneo o ubicación..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-72 rounded-xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-200"
-                />
-                <Button variant="secondary" onClick={goToMultiMatch} className="flex items-center gap-2">
-                  <FiBarChart2 className="h-4 w-4" />
-                  MultiMatch
-                </Button>
-              </div>
+
+        <div className="space-y-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h1 className="text-2xl font-bold text-white">Partidos</h1>
+              <p className="text-sm text-slate-300">
+                Busca, selecciona y navega a los análisis o al reporte MultiMatch.
+              </p>
             </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              {filteredMatches.length === 0 && (
-                <div className="col-span-full rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
-                  No encontramos partidos para “{search}”.
-                </div>
-              )}
-
-              {filteredMatches.length > 0 &&
-                filteredMatches
-                  .reduce((acc, match) => {
-                    const date = new Date(match.date);
-                    const year = date.getFullYear();
-                    const month = date.toLocaleDateString("es-ES", { month: "long" });
-                    const key = `${year}-${month}`;
-                    const existing = acc.find((g) => g.key === key);
-                    if (existing) {
-                      existing.items.push(match);
-                    } else {
-                      acc.push({ key, year, month, items: [match], ts: date.getTime() });
-                    }
-                    return acc;
-                  }, [] as { key: string; year: number; month: string; items: Match[]; ts: number }[])
-                  .sort((a, b) => b.ts - a.ts)
-                  .map((group) => (
-                    <React.Fragment key={group.key}>
-                      <div className="col-span-full flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        <span className="h-px flex-1 bg-slate-200" />
-                        {group.month} {group.year}
-                        <span className="h-px flex-1 bg-slate-200" />
-                      </div>
-                      {group.items.map((match: Match) => (
-                        <Card key={match.id} className="border-slate-200 shadow-sm">
-                          <CardHeader>
-                            <CardTitle className="text-lg font-semibold text-slate-800">
-                              {match.team} <span className="text-gray-500">vs</span> {match.opponent}
-                            </CardTitle>
-                            <CardDescription>
-                              {new Date(match.date).toLocaleDateString()}{" "}
-                              {match.competition ? `· ${match.competition}` : ""}
-                            </CardDescription>
-                          </CardHeader>
-                          <CardContent>
-                            <div className="text-sm text-gray-600 space-y-1">
-                              {match.location && (
-                                <p>
-                                  <span className="font-medium">Ubicación:</span> {match.location}
-                                </p>
-                              )}
-                            </div>
-                            <label className="mt-4 flex items-center gap-2 text-sm">
-                              <input
-                                type="checkbox"
-                                checked={selectedIds.includes(match.id)}
-                                onChange={() => toggleMatch(match.id)}
-                                className="accent-blue-600 w-4 h-4"
-                              />
-                              Seleccionar para MultiMatch
-                            </label>
-                          </CardContent>
-                          <CardFooter className="flex gap-2">
-                            <button
-                              className="flex-1 bg-blue-600 text-white font-medium rounded-xl px-4 py-2 hover:bg-blue-700 transition"
-                              onClick={() => navigate(`/analysis/${match.id}`, { state: { match } })}
-                            >
-                              Ver análisis
-                            </button>
-                            <button
-                              className="px-3 py-2 border border-gray-300 rounded-xl hover:bg-gray-50 transition"
-                              onClick={() => navigate(`/admin/matches/${match.id}/edit`)}
-                              title="Editar partido"
-                            >
-                              ⚙️
-                            </button>
-                          </CardFooter>
-                        </Card>
-                      ))}
-                    </React.Fragment>
-                  ))}
-            </div>
-
-            <div className="mt-4 text-center">
-              <Button onClick={goToMultiMatch} disabled={matches.length === 0}>
-                Ver Reporte MultiMatch
+            <div className="flex items-center gap-3">
+              <input
+                type="search"
+                placeholder="Buscar por equipo, torneo o ubicación..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="app-input w-72"
+              />
+              <Button variant="secondary" onClick={goToMultiMatch} className="flex items-center gap-2">
+                <FiBarChart2 className="h-4 w-4" />
+                MultiMatch
               </Button>
             </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
+            {filteredMatches.length === 0 && (
+              <div className="col-span-full rounded-2xl border border-dashed border-white/15 bg-white/5 p-8 text-center text-sm text-slate-300">
+                No encontramos partidos para “{search}”.
+              </div>
+            )}
+
+            {filteredMatches.length > 0 &&
+              filteredMatches
+                .reduce((acc, match) => {
+                  const date = new Date(match.date);
+                  const year = date.getFullYear();
+                  const month = date.toLocaleDateString("es-ES", { month: "long" });
+                  const key = `${year}-${month}`;
+                  const existing = acc.find((g) => g.key === key);
+                  if (existing) {
+                    existing.items.push(match);
+                  } else {
+                    acc.push({ key, year, month, items: [match], ts: date.getTime() });
+                  }
+                  return acc;
+                }, [] as { key: string; year: number; month: string; items: Match[]; ts: number }[])
+                .sort((a, b) => b.ts - a.ts)
+                .map((group) => (
+                  <React.Fragment key={group.key}>
+                    <div className="col-span-full flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                      <span className="h-px flex-1 bg-white/10" />
+                      {group.month} {group.year}
+                      <span className="h-px flex-1 bg-white/10" />
+                    </div>
+                    {group.items.map((match: Match) => (
+                      <Card key={match.id}>
+                        <CardHeader className="pb-4">
+                          <CardTitle className="text-lg font-semibold text-white">
+                            {match.team} <span className="text-slate-400">vs</span> {match.opponent}
+                          </CardTitle>
+                          <CardDescription className="text-slate-300">
+                            {new Date(match.date).toLocaleDateString()}{" "}
+                            {match.competition ? `· ${match.competition}` : ""}
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="pb-3">
+                          <div className="text-sm text-slate-300 space-y-1">
+                            {match.location && (
+                              <p>
+                                <span className="font-semibold text-slate-200">Ubicación:</span> {match.location}
+                              </p>
+                            )}
+                          </div>
+                          <label className="mt-4 flex items-center gap-2 text-sm text-slate-200">
+                            <input
+                              type="checkbox"
+                              checked={selectedIds.includes(match.id)}
+                              onChange={() => toggleMatch(match.id)}
+                              className="h-4 w-4 accent-cyan-300"
+                            />
+                            Seleccionar para MultiMatch
+                          </label>
+                        </CardContent>
+                        <CardFooter className="flex gap-2 pt-0">
+                          <Button
+                            className="flex-1"
+                            onClick={() => navigate(`/analysis/${match.id}`, { state: { match } })}
+                          >
+                            Ver análisis
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() => navigate(`/admin/matches/${match.id}/edit`)}
+                            title="Editar partido"
+                          >
+                            ⚙️
+                          </Button>
+                        </CardFooter>
+                      </Card>
+                    ))}
+                  </React.Fragment>
+                ))}
+          </div>
+
+          <div className="text-center">
+            <Button onClick={goToMultiMatch} disabled={matches.length === 0}>
+              Ver Reporte MultiMatch
+            </Button>
           </div>
         </div>
       </div>
 
       <button
         onClick={() => navigate("/import")}
-        className="fixed bottom-6 right-6 flex items-center gap-2 rounded-full bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-blue-700"
+        className="fixed bottom-6 right-6 flex items-center gap-2 rounded-full bg-[#4FD1E5] px-5 py-3 text-sm font-bold text-slate-950 shadow-[0_20px_45px_rgba(79,209,229,0.35)] transition hover:bg-cyan-300 hover:shadow-[0_24px_55px_rgba(79,209,229,0.4)]"
       >
         <FiPlus className="h-5 w-5" />
         Importar partido

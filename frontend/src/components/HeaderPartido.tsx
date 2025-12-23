@@ -52,8 +52,8 @@ const HeaderPartido = () => {
     `/Logos/${team?.replace(/\s+/g, " ").replace(/[^\w\s]/g, "")}.jpg`;
 
   return (
-    <div className="w-full bg-slate-100 p-4 rounded-xl shadow-sm">
-      <div className="flex flex-col  gap-4">
+    <div className="w-full app-card p-4 text-slate-100">
+      <div className="flex flex-col gap-4">
         {/* Equipos y score */}
         <div className="flex-1 flex justify-center items-center gap-2 w-full">
           <div className="flex flex-col items-center flex-1 min-w-0">
@@ -63,10 +63,10 @@ const HeaderPartido = () => {
               alt={`${TEAM} logo`}
               className="w-12 h-12"
             />
-            <span className="text-sm font-semibold truncate text-center w-full">{TEAM}</span>
+            <span className="text-sm font-semibold truncate text-center w-full text-slate-100">{TEAM}</span>
           </div>
 
-          <div className="flex flex-col items-center text-lg font-bold mx-2  min-w-0">
+          <div className="flex flex-col items-center text-lg font-bold mx-2 min-w-0 text-white">
             <span>{puntosEquipo} - {puntosRival}</span>
           </div>
 
@@ -77,11 +77,11 @@ const HeaderPartido = () => {
               alt={`${OPPONENT_NAME} logo`}
               className="w-12 h-12"
             />
-            <span className="text-sm font-semibold truncate text-center w-full">{OPPONENT_NAME}</span>
+            <span className="text-sm font-semibold truncate text-center w-full text-slate-100">{OPPONENT_NAME}</span>
           </div>
         </div>
         {/* Detalles */}
-        <div className="hidden 2xl:grid grid-cols-4 flex-nowrap justify-end w-full gap-x-4 gap-y-1">
+        <div className="hidden 2xl:grid grid-cols-4 flex-nowrap justify-end w-full gap-x-4 gap-y-1 text-slate-200">
           {/* Desktop (2xl) - details to the right */}
           {formattedDate && <div><strong>Data:</strong> {formattedDate}</div>}
           {GAME && <div><strong>Fecha:</strong> {GAME}</div>}
@@ -96,7 +96,7 @@ const HeaderPartido = () => {
           {REFEREE && <div><strong>Arbitro:</strong> {REFEREE}</div>}
         </div>
         {/* Mobile/tablet - details below teams, up to 8 columns */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-x-4 gap-y-1 text-sm w-full 2xl:hidden mt-2">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-x-4 gap-y-1 text-sm text-slate-200 w-full 2xl:hidden mt-2">
           {formattedDate && <div><strong>Data:</strong> {formattedDate}</div>}
           {GAME && <div><strong>Fecha:</strong> {GAME}</div>}
           {COMPETITION && <div><strong>Torneo:</strong> {COMPETITION}</div>}

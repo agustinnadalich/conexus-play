@@ -141,12 +141,12 @@ const MultiMatchReportPageContent = () => {
       {/* Sidebar de filtros */}
       <div
         className={cn(
-          "fixed left-0 top-0 z-40 h-full w-64 border-r bg-white shadow-md transition-transform duration-300",
+          "fixed left-0 top-0 z-40 h-full w-64 border-r border-white/10 bg-[#1c2235] shadow-2xl transition-transform duration-300",
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
         <button
-          className="absolute top-4 right-4 p-2 rounded hover:bg-gray-200"
+          className="absolute top-4 right-4 rounded-lg p-2 text-slate-200 transition hover:bg-white/5"
           onClick={() => setSidebarOpen(false)}
           title="Cerrar filtros"
         >
@@ -157,7 +157,7 @@ const MultiMatchReportPageContent = () => {
 
       {/* Botón flotante para abrir filtros */}
       <button
-        className="mr-2 p-2 rounded hover:bg-gray-200 fixed left-2 top-14 z-30 border-slate-300 bg-white text-slate-800 shadow-lg transition hover:bg-slate-50 md:left-4 md:top-16"
+        className="mr-2 p-2 rounded-lg fixed left-2 top-14 z-30 border border-white/15 bg-white/5 text-slate-100 shadow-lg backdrop-blur transition hover:border-cyan-300/50 hover:bg-white/10 md:left-4 md:top-16"
         onClick={() => setSidebarOpen((v) => !v)}
         title={sidebarOpen ? "Ocultar filtros" : "Mostrar filtros"}
       >
@@ -173,10 +173,10 @@ const MultiMatchReportPageContent = () => {
         <div className="px-2 pb-8 pt-4 sm:px-4 sm:pt-6">
           <div className="mb-4 flex flex-wrap items-start gap-3 justify-between">
             <div className="flex flex-col gap-2 w-full">
-              <div className="flex items-center justify-between text-xs font-medium text-slate-500">
+              <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
                 <Link
                   to="/dashboard"
-                  className="text-slate-700 hover:text-slate-900"
+                  className="text-cyan-300 hover:text-white"
                 >
                   Home / MultiMatch
                 </Link>
@@ -192,8 +192,8 @@ const MultiMatchReportPageContent = () => {
           </div>
 
           <div className="flex flex-col gap-4">
-            <div className="rounded-xl border bg-white p-4 shadow-sm">
-              <div className="text-sm text-slate-600 mb-2">
+            <div className="app-card p-4">
+              <div className="text-sm text-slate-300 mb-2">
                 {selectedSummaries.length > 0
                   ? selectedSummaries.map((m) => `${m.team ?? "Equipo"} vs ${m.opponent ?? "Rival"}`).join(" · ")
                   : "Selecciona partidos para comenzar"}

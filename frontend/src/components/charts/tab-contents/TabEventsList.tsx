@@ -37,16 +37,16 @@ const TabEventsList = ({ title, events, columns = [], onRowClick }: Props) => {
       <div className="flex items-center justify-between">
         <h4 className="text-md font-semibold">{title}</h4>
         <button
-          className="text-sm px-3 py-1 rounded border border-gray-200 hover:bg-gray-50"
+          className="text-sm px-3 py-1 rounded-lg border border-white/15 bg-white/5 text-slate-100 hover:border-cyan-200/50 hover:bg-white/10"
           onClick={() => setOpen((v) => !v)}
         >
           {open ? "Ocultar" : "Mostrar"}
         </button>
       </div>
       {open && (
-        <div className="mt-3 max-h-80 overflow-auto rounded border border-gray-100">
-          <table className="min-w-full text-xs text-left">
-            <thead className="bg-gray-100 sticky top-0">
+        <div className="mt-3 max-h-80 overflow-auto rounded-xl border border-white/10 bg-white/5 backdrop-blur">
+          <table className="min-w-full text-xs text-left text-slate-100">
+            <thead className="bg-white/10 sticky top-0 text-slate-200">
               <tr>
                 {visibleColumns.map((col) => (
                   <th key={col} className="px-3 py-2 whitespace-nowrap">
@@ -59,7 +59,7 @@ const TabEventsList = ({ title, events, columns = [], onRowClick }: Props) => {
               {rows.map((ev, idx) => (
                 <tr
                   key={ev.id ?? idx}
-                  className={`border-t hover:bg-gray-50 cursor-pointer ${idx % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
+                  className={`border-t border-white/5 hover:bg-white/10 cursor-pointer ${idx % 2 === 0 ? "bg-white/5" : "bg-white/[0.03]"}`}
                   onClick={() => onRowClick?.(ev)}
                 >
                   {visibleColumns.map((col) => {
