@@ -1,0 +1,58 @@
+# ====================================
+# RAILWAY - Configuración de Servicios
+# ====================================
+# Este archivo no es estrictamente necesario para Railway
+# pero documenta la configuración de cada servicio
+
+services:
+  # Base de Datos PostgreSQL (Railway managed)
+  database:
+    name: videoanalysis-db
+    type: postgresql
+    plan: developer  # $5/mes incluido en crédito inicial
+    
+  # Backend Flask
+  backend:
+    name: videoanalysis-backend
+    root_directory: backend
+    dockerfile: Dockerfile.prod
+    port: 5001
+    healthcheck:
+      path: /api/health
+      interval: 30
+    environment:
+      # DATABASE_URL se obtiene automáticamente del servicio PostgreSQL
+      # Las demás se configuran manualmente en Railway UI
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - AUTH_ENABLED=true
+      - ACCESS_TOKEN_EXPIRE_MINUTES=60
+      - INITIAL_ADMIN_EMAIL=admin@conexusplay.com
+      - INITIAL_ADMIN_PASSWORD=${INITIAL_ADMIN_PASSWORD}
+      - RESEND_API_KEY=${RESEND_API_KEY}
+      - RESEND_FROM=noreply@conexusplay.com
+      - VERIFICATION_EXP_HOURS=24
+      - RESET_EXP_MINUTES=60
+      - APP_URL=https://conexusplay.com
+      - FRONTEND_URL=https://conexusplay.com
+      - FLASK_ENV=production
+    domains:
+      - api.conexusplay.com
+      
+  # Frontend React
+  frontend:
+    name: videoanalysis-frontend
+    root_directory: frontend
+    dockerfile: Dockerfile.prod
+    port: 80
+    environment:
+      - VITE_API_BASE_URL=https://api.conexusplay.com/api
+    domains:
+      - conexusplay.com
+      - www.conexusplay.com
+
+# Notas de configuración:
+# 1. Railway detecta automáticamente docker-compose.yml o Dockerfiles
+# 2. Cada servicio se configura individualmente en la UI
+# 3. Los dominios se agregan en Settings > Domains de cada servicio
+# 4. Las variables de entorno se agregan en Variables tab

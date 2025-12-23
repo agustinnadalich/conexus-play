@@ -7,12 +7,14 @@ import json
 import openai
 import math
 from db import Base, engine, get_db, SessionLocal
-from models import Club, ImportProfile, Match, Event  # incluye Event para bulk_update
+from models import Club, ImportProfile, Match, Event, User  # incluye Event para bulk_update
 from werkzeug.utils import secure_filename
 from importer import import_match_from_excel, import_match_from_json, import_match_from_xml
 from normalizer import normalize_excel_to_json, normalize_xml_to_json
 import traceback
 from register_routes import register_routes
+from auth_utils import hash_password
+from sqlalchemy import text
 
 print("🔍 DEBUG: app.py se está cargando")
 
@@ -24,7 +26,82 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 app = Flask(__name__)
 Base.metadata.create_all(bind=engine)
 
-CORS(app, resources={r"/*": {"origins": "*"}})
+
+def migrate_club_branding_columns():
+    """Ensure branding columns exist on clubs table for legacy databases."""
+    stmts = [
+        "ALTER TABLE clubs ADD COLUMN IF NOT EXISTS logo_url TEXT",
+        "ALTER TABLE clubs ADD COLUMN IF NOT EXISTS primary_color VARCHAR(20)",
+        "ALTER TABLE clubs ADD COLUMN IF NOT EXISTS secondary_color VARCHAR(20)",
+        "ALTER TABLE clubs ADD COLUMN IF NOT EXISTS accent_color VARCHAR(20)",
+        "ALTER TABLE clubs ADD COLUMN IF NOT EXISTS landing_copy TEXT",
+    ]
+    try:
+        with engine.begin() as conn:
+            for stmt in stmts:
+                conn.execute(text(stmt))
+        print("✅ Migración de columnas de branding en clubs verificada")
+    except Exception as e:
+        print(f"⚠️ No se pudieron migrar columnas de clubs automáticamente: {e}")
+
+
+migrate_club_branding_columns()
+
+
+def bootstrap_super_admin():
+    email = os.getenv("INITIAL_ADMIN_EMAIL")
+    password = os.getenv("INITIAL_ADMIN_PASSWORD")
+    if not email or not password:
+        return
+    db = SessionLocal()
+    try:
+        existing = db.query(User).filter(User.email == email.lower()).first()
+        if existing:
+            return
+        admin = User(
+            email=email.lower(),
+            password_hash=hash_password(password),
+            full_name="Super Admin",
+            global_role="super_admin",
+            is_active=True,
+            is_email_verified=True,
+        )
+        db.add(admin)
+        db.commit()
+        print(f"✅ Super admin creado: {email}")
+    except Exception as e:
+        print(f"❌ Error creando super admin: {e}")
+    finally:
+        db.close()
+
+
+bootstrap_super_admin()
+
+# Configuración de CORS según ambiente
+FLASK_ENV = os.getenv("FLASK_ENV", "development")
+if FLASK_ENV == "production":
+    # Producción: CORS restringido a dominios específicos
+    allowed_origins = [
+        "https://conexusplay.com",
+        "https://www.conexusplay.com",
+        "https://api.conexusplay.com",
+        os.getenv("FRONTEND_URL", "https://conexusplay.com"),
+        os.getenv("APP_URL", "https://conexusplay.com"),
+    ]
+    # Filtrar valores None o duplicados
+    allowed_origins = list(set([o for o in allowed_origins if o]))
+    CORS(app, resources={r"/*": {
+        "origins": allowed_origins,
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"],
+        "supports_credentials": True
+    }})
+    print(f"✅ CORS configurado para producción: {allowed_origins}")
+else:
+    # Desarrollo: CORS abierto
+    CORS(app, resources={r"/*": {"origins": "*"}})
+    print("⚠️  CORS abierto (modo desarrollo)")
+
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 
@@ -915,6 +992,10 @@ def save_match():
 
         if validation_errors:
             return jsonify({"error": "Errores de validación en eventos mapeados", "details": validation_errors[:10]}), 400  # Limit to first 10 errors
+
+        # Propagar team_id si viene en payload o en match_info
+        if data.get("team_id") is None and data.get("match", {}).get("team_id") is not None:
+            data["team_id"] = data["match"].get("team_id")
 
         import_match_from_json(data, settings)
         return jsonify({"message": "Importación exitosa"}), 200
