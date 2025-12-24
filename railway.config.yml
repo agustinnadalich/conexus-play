@@ -7,13 +7,13 @@
 services:
   # Base de Datos PostgreSQL (Railway managed)
   database:
-    name: videoanalysis-db
+    name: conexusplay-db
     type: postgresql
     plan: developer  # $5/mes incluido en crédito inicial
     
   # Backend Flask
   backend:
-    name: videoanalysis-backend
+    name: conexusplay-backend
     root_directory: backend
     dockerfile: Dockerfile.prod
     port: 5001
@@ -41,7 +41,7 @@ services:
       
   # Frontend React
   frontend:
-    name: videoanalysis-frontend
+    name: conexusplay-frontend
     root_directory: frontend
     dockerfile: Dockerfile.prod
     port: 80
