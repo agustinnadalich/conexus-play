@@ -89,6 +89,7 @@ if FLASK_ENV == "production":
         os.getenv("APP_URL", "https://conexusplay.com"),
         # Permitir desarrollo local para staging
         "http://localhost:3000",
+        "http://localhost:3001",
         "http://localhost:5173",  # Vite default port
     ]
     # Filtrar valores None o duplicados
