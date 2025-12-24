@@ -340,11 +340,65 @@ def import_match_from_json(json_data: dict, profile: dict):
         db.commit()
         print(f"✅ Eventos insertados correctamente. Total: {len(events)}")
 
+        # Si se configuraron tiempos manuales, recalcular Game_Time para todos los eventos
+        if any([kick_off_1, end_1, kick_off_2, end_2]):
+            print(f"🔄 Recalculando Game_Time con tiempos manuales del partido...")
+            try:
+                from enricher import calculate_game_time_from_zero
+                
+                # Obtener eventos recién insertados
+                inserted_events = db.query(Event).filter(Event.match_id == match.id).order_by(Event.timestamp_sec).all()
+                
+                if inserted_events:
+                    # Preparar datos para recalcular
+                    events_data = [{
+                        'timestamp_sec': e.timestamp_sec,
+                        'event_type': e.event_type,
+                        'extra_data': e.extra_data or {}
+                    } for e in inserted_events]
+                    
+                    # Configurar tiempos manuales
+                    match_times = {
+                        'kick_off_1': kick_off_1 or 0,
+                        'end_1': end_1 or 2400,
+                        'kick_off_2': kick_off_2 or 2700,
+                        'end_2': end_2 or 4800
+                    }
+                    
+                    recalc_profile = {
+                        'time_mapping': {
+                            'method': 'manual',
+                            'manual_times': match_times
+                        }
+                    }
+                    
+                    # Recalcular Game_Time
+                    updated_events = calculate_game_time_from_zero(events_data, match_info={}, profile=recalc_profile)
+                    
+                    # Actualizar eventos en la base de datos
+                    for i, event in enumerate(inserted_events):
+                        if i < len(updated_events):
+                            updated_data = updated_events[i]
+                            if 'extra_data' in updated_data:
+                                event.extra_data = updated_data['extra_data']
+                                from sqlalchemy.orm.attributes import flag_modified
+                                flag_modified(event, "extra_data")
+                    
+                    db.commit()
+                    print(f"✅ Game_Time recalculado para {len(inserted_events)} eventos después del import")
+            except Exception as recalc_err:
+                print(f"⚠️ Error recalculando Game_Time después del import: {str(recalc_err)}")
+                import traceback
+                traceback.print_exc()
+                # No fallar el import por esto, los eventos ya están guardados
+
         return {"events": events, "match_info": match_info}
 
     except Exception as e:
         db.rollback()
         print(f"❌ Error al importar desde JSON: {e}")
+        import traceback
+        traceback.print_exc()
         return False
     finally:
         db.close()
