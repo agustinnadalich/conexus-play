@@ -51,7 +51,7 @@ services:
       - /app/node_modules
     environment:
       - CHOKIDAR_USEPOLLING=true
-      - VITE_API_BASE_URL=http://localhost:5001/api
+      - VITE_API_BASE_URL=http://backend:5001/api  # Usa el nombre del servicio Docker
     depends_on:
       - backend
     restart: unless-stopped

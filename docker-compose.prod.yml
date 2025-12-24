@@ -6,6 +6,7 @@
 services:
   # Base de Datos PostgreSQL
   db:
+    container_name: conexus-play-db-prod
     image: postgres:13
     restart: always
     env_file:
@@ -28,6 +29,7 @@ services:
 
   # Backend Flask con Gunicorn (PRODUCCIÓN)
   backend:
+    container_name: conexus-play-backend-prod
     build:
       context: ./backend
       dockerfile: Dockerfile.prod  # Usa Gunicorn
@@ -48,6 +50,7 @@ services:
 
   # Frontend React + Vite (BUILD ESTÁTICO)
   frontend:
+    container_name: conexus-play-frontend-prod
     build:
       context: ./frontend
       dockerfile: Dockerfile.prod  # Build optimizado
