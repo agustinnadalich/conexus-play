@@ -1,24 +1,25 @@
-# Ejemplos Prácticos de Importación
+# 📥 Ejemplos de Importación - ConexusPlay
 
-## 📋 Tabla de Contenidos
+Guía práctica para importar datos de rugby desde sistemas como LongoMatch, Sportscode o Nacsport.
 
-1. [Ejemplo Completo: XML Pescara vs Avezzano](#ejemplo-1-xml-pescara-vs-avezzano)
-2. [Ejemplo: Excel San Benedetto](#ejemplo-2-excel-san-benedetto)
-3. [Ejemplo: Perfil con Tiempos Manuales](#ejemplo-3-perfil-manual)
-4. [Casos Especiales](#casos-especiales)
+## 📋 Contenido
+
+1. [Ejemplo XML (LongoMatch)](#ejemplo-1-xml-longomatch)
+2. [Ejemplo Excel](#ejemplo-2-excel)
+3. [Configurar tiempos manualmente](#ejemplo-3-tiempos-manuales)
+4. [Problemas comunes](#casos-especiales)
 
 ---
 
-## Ejemplo 1: XML Pescara vs Avezzano
+## Ejemplo 1: XML (LongoMatch)
 
-### Archivo Original
+### Archivo de ejemplo
 
-**Nombre**: `20251019 Az-Pescara (2).xml`  
-**Tamaño**: ~500KB  
+**Nombre**: `pescara_vs_avezzano.xml`  
+**Sistema**: LongoMatch  
 **Eventos**: 577  
-**Estructura**: LongoMatch XML
 
-### Fragmento del XML
+### Parte del archivo XML
 
 ```xml
 <instance>

@@ -7,7 +7,7 @@
 
 ## 📝 Pre-requisitos
 
-- [ ] Cuenta GitHub con repo VideoAnalysis
+- [ ] Cuenta GitHub con repo conexus-play
 - [ ] Dominio conexusplay.com en Porkbun
 - [ ] API Key de Resend: `re_axRSdarV_B4Q7mmDrVZLHcZf56JxUsREc`
 
@@ -18,7 +18,7 @@
 ### 1. Generar Secrets (2 min)
 
 ```bash
-cd /Users/Agustin/wa/videoanalisis/VideoAnalysis
+cd /Users/Agustin/wa/videoanalisis/conexus-play
 ./generate_secrets.sh
 ```
 
@@ -38,8 +38,8 @@ cd /Users/Agustin/wa/videoanalisis/VideoAnalysis
 ### 3. Deploy Proyecto (5 min)
 
 1. **"New Project"** → **"Deploy from GitHub repo"**
-2. Seleccionar: `agustinnadalich/VideoAnalysis`
-3. Branch: `base_de_datos`
+2. Seleccionar: `agustinnadalich/conexus-play`
+3. Branch: `stage`
 4. Railway detectará Docker automáticamente
 
 ---

@@ -1,43 +1,125 @@
-# VideoAnalysis Project
+# 🏉 ConexusPlay - Análisis de Rugby
 
-## Requirements
+**ConexusPlay** es una plataforma web para analizar partidos de rugby. Importa datos de sistemas como LongoMatch, Sportscode o Nacsport, y visualiza estadísticas y eventos conectados con video.
 
-- Docker
-- Docker Compose
+---
 
-## Instructions to Run the Project
+## 🚀 Inicio Rápido (Para desarrolladores)
 
-1. Clone the repository:
+### Requisitos
+- Docker instalado
+- Git instalado
 
-    ```sh
-    git clone <your-repository-url>
-    cd <your-repository-directory>
-    ```
+### 3 Pasos para arrancar
 
-2. Place the video file `SBvsLIONS.mp4` in the `frontend/public` directory. You can download the video file from the link provided separately. 
+```bash
+# 1. Clonar el proyecto
+git clone https://github.com/agustinnadalich/conexus-play.git
+cd conexus-play
 
-Link to download (https://drive.google.com/file/d/1vM4BgL9VO7yC5cKg2N4HdBJLyxob31vc/view?usp=sharing )
+# 2. Copiar configuración de ejemplo
+cp .env.example .env
 
-3. Build and run the containers:
+# 3. Iniciar todo
+docker compose up -d
+```
 
-    ```sh
-    docker-compose build
-    docker-compose up
-    ```
+Abre tu navegador en: **http://localhost:3000**
 
-4. Open your web browser and navigate to `http://localhost:3000` to verify that the frontend application is running.
+---
 
-5. Verify that the backend is running by accessing `http://localhost:5001/events`.
+## 🔐 Acceso al Sistema
 
-## Project Structure
+**Usuario administrador por defecto:**
+- Email: `admin@conexusplay.com`
+- Contraseña: `Admin123!`
 
-- `frontend/`: Source code for the frontend application.
-- `backend/`: Source code for the backend application.
-- `Dockerfile`: Dockerfile to build Docker images.
-- `docker-compose.yml`: Docker Compose configuration file.
-- `requirements.txt`: Dependencies for the backend.
+---
 
-## Additional Notes
+## 📁 ¿Qué hay en este proyecto?
 
-- The video file `SBvsLIONS.mp4` is not included in the repository due to its size. Please download it separately and place it in the `frontend/public` directory.
-- If you encounter any issues, please check the logs for both the frontend and backend containers to debug.
+```
+conexus-play/
+├── backend/          → Servidor (Python + Flask)
+├── frontend/         → Interfaz web (React)
+├── docker-compose.yml → Configuración para arrancar todo
+└── .env              → Contraseñas y configuración (EDITAR SOLO ESTE)
+```
+
+---
+
+## 🛠️ Comandos Útiles
+
+### Ver logs (qué está pasando)
+```bash
+docker compose logs -f
+```
+
+### Detener todo
+```bash
+docker compose down
+```
+
+### Reiniciar un servicio
+```bash
+docker compose restart backend
+```
+
+---
+
+## 📚 Documentación Completa
+
+- **[Guía de Deploy Gratis](GUIA_DEPLOY_GRATIS_Y_LOW_COST.md)** - Cómo subir a internet (Railway gratis 2-3 meses)
+- **[Deploy Rápido a Railway](QUICKSTART_RAILWAY.md)** - 30 minutos para tener tu web online
+- **[Estrategia de Branches](BRANCH_STRATEGY.md)** - Cómo trabajar con Git (develop → stage → main)
+- **[Ejemplos de Importación](EJEMPLOS_IMPORTACION.md)** - Cómo importar datos de LongoMatch/Sportscode
+
+---
+
+## 🆘 Ayuda Rápida
+
+**¿No arranca?**
+```bash
+# Ver qué falló
+docker compose logs
+
+# Reiniciar todo
+docker compose down
+docker compose up -d
+```
+
+**¿Olvidaste la contraseña del admin?**
+- Edita `.env`
+- Cambia `INITIAL_ADMIN_PASSWORD=TuNuevaPassword123!`
+- Reinicia: `docker compose restart backend`
+
+**¿Base de datos vacía?**
+- Importa datos desde la interfaz web (http://localhost:3000/import)
+- O restaura backup: `docker compose exec -T db psql -U conexus_user -d conexus_db < backup.sql`
+
+---
+
+## 🌐 Producción
+
+**Dominio:** https://conexusplay.com (próximamente)
+
+Para deploy a producción, sigue: **[QUICKSTART_RAILWAY.md](QUICKSTART_RAILWAY.md)**
+
+---
+
+## 🏗️ Estructura de Branches
+
+- `main` - Producción (código en vivo)
+- `stage` - Testing (pruebas antes de producción)
+- `develop` - Desarrollo activo (trabajo del día a día)
+
+---
+
+## 📧 Contacto
+
+- **Repo:** https://github.com/agustinnadalich/conexus-play
+- **Email:** admin@conexusplay.com
+
+---
+
+**¡Listo para analizar rugby! 🏉**

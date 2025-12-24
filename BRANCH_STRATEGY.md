@@ -3,38 +3,32 @@
 ## 📊 Estructura de Ramas
 
 ```
-main (desarrollo local)
+develop (desarrollo activo)
   ↓
-base_de_datos (features completas)
+stage (testing con usuarios beta) ← PRÓXIMO PASO
   ↓
-stage (testing con usuarios beta) ← ESTAMOS AQUÍ
-  ↓
-production (producción final) ← PRÓXIMAMENTE
+main (producción) ← CUANDO VALIDEMOS
 ```
 
 ---
 
 ## 🌿 Descripción de Ramas
 
-### **`main`**
-- Rama principal de desarrollo
-- Código experimental y features en progreso
+### **`develop`**
+- Rama de desarrollo activo
+- Features nuevas se trabajan aquí
+- Sistema de autenticación completo
+- Base de datos relacional con 19 partidos
 - Deploy: Local únicamente
 
-### **`base_de_datos`**
-- Features completadas y funcionales
-- Sistema de autenticación implementado
-- Base de datos relacional completa
-- Deploy: Local con Docker
-
-### **`stage`** ⭐ **ACTUAL**
+### **`stage`** ⭐ **PRÓXIMO PASO**
 - Ambiente de pruebas con usuarios reales
 - Testing de MVP con beta testers
 - Recolección de feedback
 - Deploy: **Railway (gratis 2-3 meses)**
 - URL: https://stage.conexusplay.com (o Railway subdomain)
 
-### **`production`** 🚀 **PRÓXIMAMENTE**
+### **`main`** 🚀 **PRODUCCIÓN**
 - Versión estable para usuarios finales
 - Solo se sube después de validar en stage
 - Deploy: **Railway** (si ya pagas) o **Hetzner VPS** (más barato)
@@ -44,10 +38,10 @@ production (producción final) ← PRÓXIMAMENTE
 
 ## 🔄 Workflow de Desarrollo
 
-### Fase Actual: Testing en Stage
+### Fase Actual: Preparando Stage
 
 ```bash
-# 1. Trabajas en base_de_datos
+# 1. Trabajas en develop
 git checkout base_de_datos
 # ... haces cambios y commits ...
 
