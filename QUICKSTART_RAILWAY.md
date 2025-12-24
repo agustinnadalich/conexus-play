@@ -9,7 +9,7 @@
 
 - [ ] Cuenta GitHub con repo conexus-play
 - [ ] Dominio conexusplay.com en Porkbun
-- [ ] API Key de Resend: `re_axRSdarV_B4Q7mmDrVZLHcZf56JxUsREc`
+- [ ] API Key de Resend (obtener en https://resend.com/api-keys)
 
 ---
 
@@ -69,7 +69,7 @@ AUTH_ENABLED=true
 ACCESS_TOKEN_EXPIRE_MINUTES=60
 INITIAL_ADMIN_EMAIL=admin@conexusplay.com
 INITIAL_ADMIN_PASSWORD=<TU_PASSWORD_GENERADO>
-RESEND_API_KEY=re_axRSdarV_B4Q7mmDrVZLHcZf56JxUsREc
+RESEND_API_KEY=<TU_RESEND_API_KEY>
 RESEND_FROM=noreply@conexusplay.com
 VERIFICATION_EXP_HOURS=24
 RESET_EXP_MINUTES=60

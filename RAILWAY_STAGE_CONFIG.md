@@ -40,7 +40,7 @@ INITIAL_ADMIN_EMAIL=admin@conexusplay.com
 INITIAL_ADMIN_PASSWORD=<PASSWORD_STAGE_TESTING>
 
 # Email (Resend real)
-RESEND_API_KEY=re_axRSdarV_B4Q7mmDrVZLHcZf56JxUsREc
+RESEND_API_KEY=<TU_RESEND_API_KEY>
 RESEND_FROM=noreply@conexusplay.com
 
 # Configuración Email

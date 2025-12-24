@@ -81,7 +81,7 @@ FRONTEND_URL=https://stage.conexusplay.com
 DATABASE_URL=<Railway proporcionará>
 
 # Email: Usar Resend real
-RESEND_API_KEY=re_axRSdarV_B4Q7mmDrVZLHcZf56JxUsREc
+RESEND_API_KEY=<TU_RESEND_API_KEY>
 RESEND_FROM=noreply@conexusplay.com
 
 # Admin inicial para testing
@@ -103,7 +103,7 @@ FRONTEND_URL=https://conexusplay.com
 DATABASE_URL=<URL_PRODUCCION>
 
 # Email: Resend con dominio verificado
-RESEND_API_KEY=re_axRSdarV_B4Q7mmDrVZLHcZf56JxUsREc
+RESEND_API_KEY=<TU_RESEND_API_KEY>
 RESEND_FROM=noreply@conexusplay.com
 
 # Admin de producción (diferente a stage)

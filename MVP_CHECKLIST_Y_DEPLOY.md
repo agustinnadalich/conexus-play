@@ -229,7 +229,7 @@ INITIAL_ADMIN_EMAIL=admin@conexusplay.com
 INITIAL_ADMIN_PASSWORD=<PASSWORD_SEGURO_NUEVO>
 
 # Email (ya configurado)
-RESEND_API_KEY=re_axRSdarV_B4Q7mmDrVZLHcZf56JxUsREc
+RESEND_API_KEY=<TU_RESEND_API_KEY>
 RESEND_FROM=noreply@conexusplay.com
 
 # URLs de producción
@@ -388,7 +388,7 @@ Voy a crear los ajustes necesarios ahora mismo...
    ACCESS_TOKEN_EXPIRE_MINUTES=60
    INITIAL_ADMIN_EMAIL=admin@conexusplay.com
    INITIAL_ADMIN_PASSWORD=<TU_PASSWORD_GENERADO>
-   RESEND_API_KEY=re_axRSdarV_B4Q7mmDrVZLHcZf56JxUsREc
+   RESEND_API_KEY=<TU_RESEND_API_KEY>
    RESEND_FROM=noreply@conexusplay.com
    VERIFICATION_EXP_HOURS=24
    RESET_EXP_MINUTES=60
