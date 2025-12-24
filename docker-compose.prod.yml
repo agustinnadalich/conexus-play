@@ -15,7 +15,7 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
     volumes:
-      - videoanalysis_postgres-data:/var/lib/postgresql/data
+      - conexusplay_postgres-data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     healthcheck:
@@ -24,7 +24,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - videoanalysis-network
+      - conexusplay-network
 
   # Backend Flask con Gunicorn (PRODUCCIÓN)
   backend:
@@ -44,7 +44,7 @@ services:
         condition: service_healthy
     restart: always
     networks:
-      - videoanalysis-network
+      - conexusplay-network
 
   # Frontend React + Vite (BUILD ESTÁTICO)
   frontend:
@@ -57,12 +57,12 @@ services:
       - backend
     restart: always
     networks:
-      - videoanalysis-network
+      - conexusplay-network
 
 volumes:
-  videoanalysis_postgres-data:
+  conexusplay_postgres-data:
     external: false
 
 networks:
-  videoanalysis-network:
+  conexusplay-network:
     driver: bridge
