@@ -15,10 +15,18 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+
+# Environment files - NEVER COMMIT
 .env
+.env.*
+.env.local
+.env.stage
+.env.production
 .venv
 env/
 venv/
+
+# Database files
 *.sqlite3
 *.db
 
