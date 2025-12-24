@@ -282,6 +282,14 @@ def import_match_from_json(json_data: dict, profile: dict):
                 print(f"✅ Equipo creado: {team.name}")
 
         match_date = datetime.strptime(match_info["date"], "%Y-%m-%d").date()
+        
+        # Extraer tiempos manuales si vienen en match_info o en manual_period_times
+        manual_times = match_info.get("manual_period_times", {})
+        kick_off_1 = manual_times.get("kick_off_1") or match_info.get("kick_off_1_seconds")
+        end_1 = manual_times.get("end_1") or match_info.get("end_1_seconds")
+        kick_off_2 = manual_times.get("kick_off_2") or match_info.get("kick_off_2_seconds")
+        end_2 = manual_times.get("end_2") or match_info.get("end_2_seconds")
+        
         match = Match(
             team_id=team.id,
             opponent_name=match_info.get("opponent_name"),
@@ -296,8 +304,13 @@ def import_match_from_json(json_data: dict, profile: dict):
             wind_1p=match_info.get("wind_1p"),
             wind_2p=match_info.get("wind_2p"),
             referee=match_info.get("referee"),
-            result=match_info.get("result")
+            result=match_info.get("result"),
+            kick_off_1_seconds=kick_off_1,
+            end_1_seconds=end_1,
+            kick_off_2_seconds=kick_off_2,
+            end_2_seconds=end_2
         )
+        print(f"✅ Tiempos manuales configurados: kick_off_1={kick_off_1}, end_1={end_1}, kick_off_2={kick_off_2}, end_2={end_2}")
         db.add(match)
         db.commit()
         print(f"✅ Partido creado: vs {match.opponent_name} en {match.location}")

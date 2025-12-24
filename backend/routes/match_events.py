@@ -396,9 +396,14 @@ def get_match_events_deprecated(match_id):
 
             if team_name is None:
                 ev["IS_OPPONENT"] = None
+            elif str(team_name).upper() in ["OPPONENT", "RIVAL", "OPONENTE"]:
+                # Marcado explícitamente como rival en el XML
+                ev["IS_OPPONENT"] = True
             elif team_name in team_names:
+                # Es el equipo del partido
                 ev["IS_OPPONENT"] = False
             else:
+                # Nombre no coincide con el equipo del partido
                 ev["IS_OPPONENT"] = True
 
         # Inicializar perfil

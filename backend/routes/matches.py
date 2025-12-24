@@ -192,7 +192,67 @@ def update_match(id):
         print(f"DEBUG: Valores después de actualización - global_delay: {match.global_delay_seconds}, event_delays: {match.event_delays}")
         
         db.commit()
-        print(f"DEBUG: Commit realizado")
+        print(f"✅ Partido actualizado correctamente: {match.id}")
+        
+        # Si se actualizaron los tiempos del partido, recalcular Game_Time automáticamente
+        times_updated = any([
+            'kick_off_1_seconds' in data,
+            'end_1_seconds' in data,
+            'kick_off_2_seconds' in data,
+            'end_2_seconds' in data
+        ])
+        
+        if times_updated:
+            print(f"🔄 Tiempos actualizados, recalculando Game_Time...")
+            try:
+                # Importar aquí para evitar circular imports
+                from enricher import calculate_game_time_from_zero
+                
+                # Obtener eventos del partido
+                events = db.query(Event).filter(Event.match_id == id).order_by(Event.timestamp_sec).all()
+                
+                if events:
+                    # Preparar datos para recalcular
+                    events_data = [{
+                        'timestamp_sec': e.timestamp_sec,
+                        'event_type': e.event_type,
+                        'extra_data': e.extra_data or {}
+                    } for e in events]
+                    
+                    # Configurar tiempos manuales
+                    match_times = {
+                        'kick_off_1': match.kick_off_1_seconds or 0,
+                        'end_1': match.end_1_seconds or 2400,
+                        'kick_off_2': match.kick_off_2_seconds or 2700,
+                        'end_2': match.end_2_seconds or 4800
+                    }
+                    
+                    profile = {
+                        'time_mapping': {
+                            'method': 'manual',
+                            'manual_times': match_times
+                        }
+                    }
+                    
+                    # Recalcular Game_Time
+                    updated_events = calculate_game_time_from_zero(events_data, match_info={}, profile=profile)
+                    
+                    # Actualizar eventos en la base de datos
+                    for i, event in enumerate(events):
+                        if i < len(updated_events):
+                            updated_data = updated_events[i]
+                            if 'extra_data' in updated_data:
+                                event.extra_data = updated_data['extra_data']
+                                from sqlalchemy.orm.attributes import flag_modified
+                                flag_modified(event, "extra_data")
+                    
+                    db.commit()
+                    print(f"✅ Game_Time recalculado para {len(events)} eventos")
+            except Exception as recalc_err:
+                print(f"⚠️ Error recalculando Game_Time: {str(recalc_err)}")
+                import traceback
+                traceback.print_exc()
+                # No fallar el update del partido por esto
         
         # Devolver el partido actualizado
         result = {

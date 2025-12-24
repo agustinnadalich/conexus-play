@@ -356,7 +356,7 @@ const PreviewImport = () => {
                     onChange={() => toggleCategory(cat)}
                   />
                   <div className="flex flex-col">
-                    <span className="font-medium">{cat}</span>
+                    <span className="font-medium text-gray-900">{cat}</span>
                     <span className="text-xs text-gray-500">{eventCount} eventos</span>
                   </div>
                 </label>
