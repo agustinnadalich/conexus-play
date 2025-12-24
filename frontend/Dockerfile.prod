@@ -29,6 +29,7 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 # No usar proxy aquí - VITE_API_BASE_URL debe configurarse en build time
 RUN echo 'server { \
     listen 80; \
+    listen [::]:80; \
     location / { \
         root /usr/share/nginx/html; \
         index index.html; \
