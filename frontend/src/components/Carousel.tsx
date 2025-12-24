@@ -8,8 +8,8 @@ import TacklesTimeChart from './charts/TacklesTimeChart';
 import PenaltiesPlayerBarChart from './charts/PenaltiesPlayerBarChart';
 import PenaltiesTimeChart from './charts/PenaltiesTimeChart';
 import PenaltiesCausePieChart from './charts/PenaltiesCausePieChart';
-import TurnoversPlayerBarChart from './charts/TurnoversPlayerBarChart';
-import TurnoversTypePieChart from './charts/TurnoversTypePieChart';
+// import TurnoversPlayerBarChart from './charts/TurnoversPlayerBarChart';
+// import TurnoversTypePieChart from './charts/TurnoversTypePieChart';
 import TurnoversTimeChart from './charts/TurnoversTimeChart';
 import { useFilterContext } from '../context/FilterContext';
 import PlayerPointsChart from './charts/PlayerPointsChart';
@@ -212,12 +212,12 @@ const Carousel = forwardRef<any, CarouselProps>(
           </div>
         </div>
   <div data-label="Turnovers" id="turnovers-tab" className='tab-content'  style={{ display: hasTurnovers ? 'flex' : 'none' }}>
-          <div className="chart-container">
+          {/* <div className="chart-container">
             <TurnoversPlayerBarChart events={filteredEvents.filter(event => event.CATEGORY === "TURNOVER+" || event.CATEGORY === "TURNOVER-")} onChartClick={handleChartClick} />
           </div>
           <div className="chart-container">
             <TurnoversTypePieChart events={filteredEvents.filter(event => event.CATEGORY === "TURNOVER+" || event.CATEGORY === "TURNOVER-")} onChartClick={handleChartClick} />
-          </div>
+          </div> */}
           <div className="chart-container">
             <TurnoversTimeChart events={filteredEvents.filter(event => event.CATEGORY === "TURNOVER+" || event.CATEGORY === "TURNOVER-")} onChartClick={handleChartClick} />
           </div>

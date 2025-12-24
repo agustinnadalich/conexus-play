@@ -244,13 +244,13 @@ const MatchesAdmin = () => {
             alert(`✅ Configuración guardada y ${recalcData.events_updated} eventos actualizados correctamente`);
             
             // Actualizar el estado local
-            setEditingMatch({
-                ...editingMatch,
-                kick_off_1_seconds: manualTimes.kick_off_1,
+            setEditingMatch((prev) => ({
+                ...prev,
+                // kick_off_1_seconds: manualTimes.kick_off_1,
                 end_1_seconds: manualTimes.end_1,
-                kick_off_2_seconds: manualTimes.kick_off_2,
+                // kick_off_2_seconds: manualTimes.kick_off_2,
                 end_2_seconds: manualTimes.end_2
-            });
+            }));
             
             fetchMatches(); // Recargar partidos
         } catch (error) {

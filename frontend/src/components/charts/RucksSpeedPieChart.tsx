@@ -86,7 +86,7 @@ const RucksSpeedPieChart: React.FC<Props> = ({ events, onChartClick }) => {
               maintainAspectRatio: false,
               plugins: { title: { display: true, text: 'Rucks - Nuestro equipo' } },
               onClick: (event, elements) => {
-                const idx = elements?.[0]?.index ?? elements?.[0]?.element?.$context?.dataIndex;
+                const idx = elements?.[0]?.index;
                 const label = dataOur.labels?.[idx];
                 handleClick('OUR', label || '', event, elements);
               },
@@ -105,7 +105,7 @@ const RucksSpeedPieChart: React.FC<Props> = ({ events, onChartClick }) => {
               maintainAspectRatio: false,
               plugins: { title: { display: true, text: 'Rucks - Rival' } },
               onClick: (event, elements) => {
-                const idx = elements?.[0]?.index ?? elements?.[0]?.element?.$context?.dataIndex;
+                const idx = elements?.[0]?.index;
                 const label = dataOpp.labels?.[idx];
                 handleClick('OPP', label || '', event, elements);
               },

@@ -87,6 +87,9 @@ if FLASK_ENV == "production":
         "https://api.conexusplay.com",
         os.getenv("FRONTEND_URL", "https://conexusplay.com"),
         os.getenv("APP_URL", "https://conexusplay.com"),
+        # Permitir desarrollo local para staging
+        "http://localhost:3000",
+        "http://localhost:5173",  # Vite default port
     ]
     # Filtrar valores None o duplicados
     allowed_origins = list(set([o for o in allowed_origins if o]))
