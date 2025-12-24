@@ -266,7 +266,7 @@ brew install libpq
 brew link --force libpq
 
 # Conectar (Railway te da el comando exacto)
-psql postgres://postgres:password@host.railway.app:5432/railway
+psql <DATABASE_URL_DE_RAILWAY>
 
 # Restaurar backup
 \i /Users/Agustin/wa/videoanalisis/VideoAnalysis/db_backups/DATOS_COMPLETOS_20251218_133935.sql
