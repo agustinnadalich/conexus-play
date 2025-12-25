@@ -5,6 +5,14 @@ import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 const LineoutTeamChart = ({ events, onChartClick, matchInfo, ourTeamsList }: any) => {
+  console.log('🔍 LineoutTeamChart DEBUG:', {
+    totalEvents: events.length,
+    ourTeamsList,
+    matchInfo_TEAM: matchInfo?.TEAM,
+    matchInfo_opponent: matchInfo?.opponent_name || matchInfo?.OPPONENT,
+    sampleTeams: events.slice(0, 3).map((e: any) => e.team || e.TEAM)
+  });
+  
   const getResult = (event: any) => {
     const candidates: any[] = [];
     candidates.push(event.extra_data?.['RESULTADO-LINE']);

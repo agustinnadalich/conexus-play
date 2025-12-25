@@ -34,6 +34,7 @@ def list_teams():
                     "category": t.category,
                     "season": t.season,
                     "club_id": t.club_id,
+                    "is_opponent": t.is_opponent or False,
                 }
                 for t in teams
             ]
@@ -67,6 +68,7 @@ def create_team():
             name=name,
             category=data.get('category'),
             season=data.get('season'),
+            is_opponent=data.get('is_opponent', False),
         )
         db.add(team)
         db.commit()
@@ -77,6 +79,7 @@ def create_team():
                 "category": team.category,
                 "season": team.season,
                 "club_id": team.club_id,
+                "is_opponent": team.is_opponent or False,
             }
         }), 201
     except Exception as e:
@@ -115,7 +118,7 @@ def update_team(team_id: int):
                 print(f"[teams] update_team club destino {new_club_id} no existe")
                 return jsonify({"error": "Club destino no encontrado"}), 404
             team.club_id = new_club_id
-        for field in ['name', 'category', 'season']:
+        for field in ['name', 'category', 'season', 'is_opponent']:
             if field in data:
                 setattr(team, field, data.get(field))
         db.commit()
@@ -126,6 +129,7 @@ def update_team(team_id: int):
             "category": team.category,
             "season": team.season,
             "club_id": team.club_id,
+            "is_opponent": team.is_opponent or False,
         }})
     except Exception as e:
         db.rollback()
@@ -160,4 +164,44 @@ def delete_team(team_id: int):
         db.close()
 
 
-__all__ = ['teams_bp']
+@teams_bp.route('/clubs/<int:club_id>/opponents', methods=['GET', 'OPTIONS'])
+@cross_origin(origins="*", supports_credentials=True)
+def list_club_opponents(club_id: int):
+    """List all opponent teams for a specific club"""
+    db = SessionLocal()
+    try:
+        user, _ = get_current_user(db)
+        if not user:
+            return jsonify({"error": "No autorizado"}), 401
+        
+        # Verify club exists and user has access
+        club = db.query(Club).get(club_id)
+        if not club:
+            return jsonify({"error": "Club no encontrado"}), 404
+        
+        if not user_is_super_admin(user):
+            club_ids = [m.club_id for m in _active_memberships(user)]
+            if club_id not in club_ids:
+                return jsonify({"error": "Sin acceso a este club"}), 403
+        
+        # Get all opponent teams for this club
+        opponents = db.query(Team).filter(
+            Team.club_id == club_id,
+            Team.is_opponent == True
+        ).order_by(Team.name).all()
+        
+        return jsonify({
+            "opponents": [
+                {
+                    "id": t.id,
+                    "name": t.name,
+                    "category": t.category,
+                    "season": t.season,
+                }
+                for t in opponents
+            ]
+        })
+    finally:
+        db.close()
+
+

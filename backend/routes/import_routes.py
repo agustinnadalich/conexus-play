@@ -16,7 +16,26 @@ def import_xml():
             "opponent": "Nombre del rival", 
             "date": "2025-01-01",
             "video_url": "https://youtube.com/watch?v=..."
-        }
+        },
+        "discard_categories": ["END", "WARMUP", "TIMEOUT"],  // opcional
+        "team_mapping": {  // opcional
+            "our_team": {
+                "team_id": 18,
+                "name": "Pescara",
+                "detected_name": "PESCARA"
+            },
+            "opponent": {
+                "team_id": 25,  // o null si es nuevo
+                "name": "CASI",
+                "detected_name": "RIVAL",
+                "is_new": true
+            }
+        },
+        "team_inference": [  // opcional
+            {"event_type": "ATTACK", "assign_to": "our_team"},
+            {"event_type": "DEFENSE", "assign_to": "our_team"},
+            {"event_type": "TURNOVER+", "assign_to": "our_team"}
+        ]
     }
     """
     try:
@@ -26,6 +45,9 @@ def import_xml():
             
         filename = data.get('filename')
         profile = data.get('profile', {})
+        discard_categories = data.get('discard_categories', [])
+        team_mapping = data.get('team_mapping')
+        team_inference = data.get('team_inference')
         
         if not filename:
             return jsonify({"error": "Se requiere el nombre del archivo"}), 400
@@ -36,8 +58,14 @@ def import_xml():
         if not os.path.exists(xml_path):
             return jsonify({"error": f"El archivo {filename} no existe"}), 404
             
-        # Importar el partido
-        result = import_match_from_xml(xml_path, profile)
+        # Importar el partido con team_mapping y team_inference si están presentes
+        result = import_match_from_xml(
+            xml_path, 
+            profile, 
+            discard_categories=discard_categories,
+            team_mapping=team_mapping,
+            team_inference=team_inference
+        )
         
         if result is False:
             return jsonify({"error": "Error al importar el partido"}), 500

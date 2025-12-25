@@ -7,6 +7,41 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { authFetch } from "@/api/api";
 
+// Tipos para team inference system
+interface InferenceRule {
+  event_type: string;
+  assign_to: string;
+  count: number;
+  reason: string;
+}
+
+interface EventTypeInfo {
+  count: number;
+  suggested_team: string;
+  has_players: boolean;
+}
+
+interface EventsWithoutTeam {
+  total_count: number;
+  by_type: Record<string, EventTypeInfo>;
+  inference_rules: InferenceRule[];
+}
+
+interface DetectedTeam {
+  name: string;  // Backend usa 'name', no 'detected_name'
+  count: number;  // Backend usa 'count', no 'event_count'
+  is_likely_opponent: boolean;
+  sample_events: string[];
+}
+
+interface TeamDetection {
+  detected_teams: DetectedTeam[];
+  suggested_our_team?: string;
+  suggested_opponent?: string;
+  total_events_with_team: number;
+  events_without_team?: EventsWithoutTeam;
+}
+
 const PreviewImport = () => {
   const { state } = useLocation();
   const navigate = useNavigate();
@@ -22,6 +57,17 @@ const PreviewImport = () => {
   const [detectedFields, setDetectedFields] = useState<any[]>([]);
   const [mapping, setMapping] = useState<any[]>([]);
   const [mappedPreview, setMappedPreview] = useState<any[] | null>(null);
+  
+  // Estados para team inference
+  const [teamDetection, setTeamDetection] = useState<TeamDetection | null>(previewData?.team_detection || null);
+  const [selectedInferenceRules, setSelectedInferenceRules] = useState<Record<string, boolean>>(() => {
+    // Por defecto, habilitar todas las reglas sugeridas
+    const initial: Record<string, boolean> = {};
+    previewData?.team_detection?.events_without_team?.inference_rules?.forEach((rule: InferenceRule) => {
+      initial[rule.event_type] = true;
+    });
+    return initial;
+  });
   
   // Estados para configuración de tiempos manuales
   const [manualTimes, setManualTimes] = useState<Record<string, number>>(() => {
@@ -108,6 +154,14 @@ const PreviewImport = () => {
     setIsLoading(true);
     setError(null);
     try {
+        // Construir team_inference solo con las reglas seleccionadas
+        const teamInference = teamDetection?.events_without_team?.inference_rules
+          ?.filter(rule => selectedInferenceRules[rule.event_type])
+          .map(rule => ({
+            event_type: rule.event_type,
+            assign_to: rule.assign_to
+          }));
+
         const res = await authFetch("/save_match", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -121,6 +175,7 @@ const PreviewImport = () => {
             events: eventsToImport,
             profile: profile?.name || profile,  // Enviar solo el nombre del perfil
             team_id: teamId ? Number(teamId) : undefined,
+            ...(teamInference && teamInference.length > 0 && { team_inference: teamInference })
           })
         });
       if (!res.ok) {
@@ -312,6 +367,126 @@ const PreviewImport = () => {
                   onChange={(e) => setManualTimes(prev => ({ ...prev, end_2: parseInt(e.target.value) || 0 }))}
                   placeholder="Ej: 4800"
                 />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Inferencia de equipos para eventos sin equipo explícito */}
+      {teamDetection?.events_without_team && teamDetection.events_without_team.total_count > 0 && (
+        <Card className="mb-4">
+          <CardContent className="space-y-4 pt-6">
+            <div className="flex items-start justify-between">
+              <div>
+                <h2 className="text-lg font-semibold">🧠 Asignación Inteligente de Equipos</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {teamDetection.events_without_team.total_count} eventos no tienen equipo explícito. 
+                  Selecciona las categorías que quieres asignar automáticamente.
+                </p>
+              </div>
+              <div className="text-sm bg-blue-50 px-3 py-1 rounded">
+                <span className="font-medium">{teamDetection.total_events_with_team}</span> eventos con equipo
+              </div>
+            </div>
+
+            {/* Mostrar equipos detectados */}
+            {teamDetection.detected_teams && teamDetection.detected_teams.length > 0 && (
+              <div className="p-3 bg-gray-50 rounded">
+                <p className="text-sm font-medium mb-2">Equipos detectados:</p>
+                <div className="flex gap-4">
+                  {teamDetection.detected_teams.map((team) => (
+                    <div key={team.name} className="flex items-center gap-2">
+                      <span className="font-mono text-sm bg-white px-2 py-1 rounded border">
+                        {team.name}
+                      </span>
+                      <span className="text-xs text-gray-600">
+                        {team.count} eventos
+                        {team.is_likely_opponent && ' (rival)'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Tabla de reglas de inferencia */}
+            {teamDetection.events_without_team.inference_rules.length > 0 && (
+              <div className="border rounded overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="text-left p-3 font-medium">Activar</th>
+                      <th className="text-left p-3 font-medium">Categoría</th>
+                      <th className="text-left p-3 font-medium">Eventos</th>
+                      <th className="text-left p-3 font-medium">Asignar a</th>
+                      <th className="text-left p-3 font-medium">Razón</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {teamDetection.events_without_team.inference_rules.map((rule) => {
+                      const isSelected = selectedInferenceRules[rule.event_type];
+                      return (
+                        <tr 
+                          key={rule.event_type} 
+                          className={`border-t ${isSelected ? 'bg-green-50' : 'bg-white'}`}
+                        >
+                          <td className="p-3">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => setSelectedInferenceRules(prev => ({
+                                ...prev,
+                                [rule.event_type]: !prev[rule.event_type]
+                              }))}
+                              className="w-4 h-4 cursor-pointer"
+                            />
+                          </td>
+                          <td className="p-3">
+                            <span className="font-mono font-medium">{rule.event_type}</span>
+                          </td>
+                          <td className="p-3 text-gray-600">{rule.count}</td>
+                          <td className="p-3">
+                            <span className={`px-2 py-1 rounded text-xs font-medium ${
+                              rule.assign_to === 'our_team' 
+                                ? 'bg-blue-100 text-blue-800' 
+                                : 'bg-orange-100 text-orange-800'
+                            }`}>
+                              {rule.assign_to === 'our_team' ? '🏠 Nuestro equipo' : '🏃 Rival'}
+                            </span>
+                          </td>
+                          <td className="p-3 text-xs text-gray-600">{rule.reason}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <div className="flex gap-2 pt-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  const allSelected: Record<string, boolean> = {};
+                  teamDetection.events_without_team?.inference_rules.forEach(rule => {
+                    allSelected[rule.event_type] = true;
+                  });
+                  setSelectedInferenceRules(allSelected);
+                }}
+              >
+                Seleccionar Todas
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setSelectedInferenceRules({})}
+              >
+                Desactivar Todas
+              </Button>
+              <div className="ml-auto text-sm text-gray-600">
+                {Object.values(selectedInferenceRules).filter(Boolean).length} de {teamDetection.events_without_team.inference_rules.length} reglas activas
               </div>
             </div>
           </CardContent>

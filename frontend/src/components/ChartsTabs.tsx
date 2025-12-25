@@ -1320,6 +1320,19 @@ const ChartsTabs = (_props: ChartsTabsProps) => {
   const turnoverEvents = filteredEventsList.filter(e => e.CATEGORY === 'TURNOVER+' || e.CATEGORY === 'TURNOVER-' || e.event_type === 'TURNOVER+' || e.event_type === 'TURNOVER-');
   const scrumEvents = filteredEventsList.filter(isScrum);
   const lineoutEvents = filteredEventsList.filter(isLineout);
+  
+  // DEBUG: Ver datos de lineouts
+  console.log('🔍 DEBUG Lineouts:', {
+    total: lineoutEvents.length,
+    sample: lineoutEvents.slice(0, 3).map(e => ({
+      category: e.CATEGORY || e.event_type,
+      team: e.team || e.TEAM,
+      is_opponent: e.IS_OPPONENT,
+      equipo: e.extra_data?.EQUIPO,
+      result: e.extra_data?.LINE_RESULT || e.LINE_RESULT
+    }))
+  });
+  
   const goalKickEvents = filteredEventsList.filter(isGoalKick);
   const lineBreakEvents = filteredEventsList.filter(isLineBreak);
   const pointsEvents = effectiveEvents.filter(isPoints);

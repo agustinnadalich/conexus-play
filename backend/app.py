@@ -9,7 +9,7 @@ import math
 from db import Base, engine, get_db, SessionLocal
 from models import Club, ImportProfile, Match, Event, User  # incluye Event para bulk_update
 from werkzeug.utils import secure_filename
-from importer import import_match_from_excel, import_match_from_json, import_match_from_xml
+from importer import import_match_from_excel, import_match_from_json, import_match_from_xml, detect_teams_in_events
 from normalizer import normalize_excel_to_json, normalize_xml_to_json
 import traceback
 from register_routes import register_routes
@@ -341,24 +341,25 @@ def safe_profile_settings(profile):
     except Exception:
         return {}
 
-@app.route('/api/matches/<int:id>', methods=['PUT'])
-def update_match(id):
-    session = SessionLocal()
-    match = session.query(Match).get(id)
-    if not match:
-        return jsonify({"error": "Match not found"}), 404
+# RUTA LEGACY DESHABILITADA - Usar routes/matches.py:update_match() que tiene la lógica completa
+# @app.route('/api/matches/<int:id>', methods=['PUT'])
+# def update_match(id):
+#     session = SessionLocal()
+#     match = session.query(Match).get(id)
+#     if not match:
+#         return jsonify({"error": "Match not found"}), 404
 
-    data = request.json
-    if not data:
-        return jsonify({"error": "No data provided"}), 400
-    for key, value in data.items():
-        if key == "id":
-            continue
-        # Solo permite actualizar campos simples
-        if hasattr(match, key) and key != "team":
-            setattr(match, key, value)
-    session.commit()
-    return jsonify(match.to_dict())
+#     data = request.json
+#     if not data:
+#         return jsonify({"error": "No data provided"}), 400
+#     for key, value in data.items():
+#         if key == "id":
+#             continue
+#         # Solo permite actualizar campos simples
+#         if hasattr(match, key) and key != "team":
+#             setattr(match, key, value)
+#     session.commit()
+#     return jsonify(match.to_dict())
 
 # @app.route('/matches', methods=['GET'])
 # def get_matches():
@@ -908,12 +909,16 @@ def preview_file():
         event_types = sorted(set(str(ev.get('event_type', 'Desconocido')) for ev in events))
         players = sorted(set(str(ev.get('player')) for ev in events if ev.get('player')))
 
+        # Detectar equipos únicos en los eventos
+        team_detection = detect_teams_in_events(events)
+
         response_data = {
             'match_info': match,
             'events': events,
             'event_count': len(events),
             'event_types': event_types,
-            'players': players
+            'players': players,
+            'team_detection': team_detection  # Nuevo: información de equipos detectados
         }
         return Response(json.dumps(convert_json_safe(response_data)), mimetype='application/json'), 200
     except Exception as e:

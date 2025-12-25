@@ -448,9 +448,12 @@ def calculate_game_time_from_zero(events, match_info=None, profile=None):
         # Inicializar timestamps para hitos
         manual = time_mapping.get('manual_times', {})
         kick_off_1_ts = manual.get('kick_off_1', 0)
-        end_1_ts = manual.get('end_1', kick_off_1_ts)
-        kick_off_2_ts = manual.get('kick_off_2', end_1_ts)
-        end_2_ts = manual.get('end_2', kick_off_2_ts)
+        end_1_ts = manual.get('end_1', 2400)
+        kick_off_2_ts = manual.get('kick_off_2', 2700)
+        end_2_ts = manual.get('end_2', 4800)
+        
+        print(f"🔍 DEBUG enricher: method=manual, manual_times={manual}")
+        print(f"🔍 DEBUG enricher: kick_off_1_ts={kick_off_1_ts}, end_1_ts={end_1_ts}, kick_off_2_ts={kick_off_2_ts}, end_2_ts={end_2_ts}")
     else:
         # Detectar hitos según categoría o descriptor
         conf = {

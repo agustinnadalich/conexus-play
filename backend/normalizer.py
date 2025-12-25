@@ -972,12 +972,13 @@ def normalize_xml_to_json(filepath, profile, discard_categories=None, translator
             
             game_time_str = seconds_to_game_time(timestamp, period, time_offsets)
             
-            # Determinar equipo (prioridad: hint por RIVAL en código, luego descriptor EQUIPO/TEAM/MISC)
+            # Determinar equipo (prioridad: hint por RIVAL en código, luego descriptor EQUIPO/TEAM solamente)
             def resolve_team():
                 # Hint de código
                 if team_hint == "OPPONENT":
                     return "OPPONENT"
                 eq_candidates = []
+                # SOLO usar labels con group="EQUIPO", "TEAM" o "SIDE" - NO usar MISC
                 for key in ['EQUIPO', 'TEAM', 'SIDE']:
                     val = descriptors.get(key)
                     if val is None:
@@ -986,14 +987,8 @@ def normalize_xml_to_json(filepath, profile, discard_categories=None, translator
                         eq_candidates.extend(val)
                     else:
                         eq_candidates.append(val)
-                # Si no hay EQUIPO explícito, intentar inferir desde MISC cuando es un texto simple
-                misc = descriptors.get('MISC')
-                if misc is not None:
-                    if isinstance(misc, list):
-                        eq_candidates.extend(misc)
-                    else:
-                        eq_candidates.append(misc)
-
+                
+                # NO incluir MISC - solo usar valores explícitamente marcados como equipo
                 guessed = guess_team_from_tokens(eq_candidates)
                 if guessed:
                     return guessed

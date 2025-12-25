@@ -134,6 +134,7 @@ class Team(Base):
     name = Column(String(100))
     category = Column(String(50))
     season = Column(String(20))
+    is_opponent = Column(Boolean, default=False)  # True if this is an opponent team, False if it's one of our teams
 
     club = relationship("Club", back_populates="teams")
     players = relationship("TeamPlayer", back_populates="team")
