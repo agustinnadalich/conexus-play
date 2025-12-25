@@ -70,6 +70,15 @@ const PreviewImport = () => {
     return initial;
   });
   
+  // Estado para gestionar cambios en las asignaciones (our_team/opponent)
+  const [inferenceAssignments, setInferenceAssignments] = useState<Record<string, string>>(() => {
+    const initial: Record<string, string> = {};
+    previewData?.team_detection?.events_without_team?.inference_rules?.forEach((rule: InferenceRule) => {
+      initial[rule.event_type] = rule.assign_to;
+    });
+    return initial;
+  });
+  
   // Estado para equipos disponibles
   const [availableTeams, setAvailableTeams] = useState<any[]>([]);
   
@@ -174,12 +183,12 @@ const PreviewImport = () => {
     setIsLoading(true);
     setError(null);
     try {
-        // Construir team_inference solo con las reglas seleccionadas
+        // Construir team_inference solo con las reglas seleccionadas, usando las asignaciones editadas
         const teamInference = teamDetection?.events_without_team?.inference_rules
           ?.filter(rule => selectedInferenceRules[rule.event_type])
           .map(rule => ({
             event_type: rule.event_type,
-            assign_to: rule.assign_to
+            assign_to: inferenceAssignments[rule.event_type] || rule.assign_to  // Usar la asignación editada
           }));
 
         const res = await authFetch("/save_match", {
@@ -328,22 +337,24 @@ const PreviewImport = () => {
                 {required && <span className="text-red-500 ml-1">*</span>}
               </Label>
               {key === 'opponent_name' ? (
-                <Select
-                  value={matchInfo[key] || ""}
-                  onValueChange={(value) => handleFieldChange(key, value)}
-                >
-                  <SelectTrigger className={required && !matchInfo[key] ? "border-red-300" : ""}>
-                    <SelectValue placeholder="Selecciona el equipo rival" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="manual-input">Ingresar manualmente...</SelectItem>
+                <>
+                  <Input
+                    type="text"
+                    list="teams-datalist"
+                    value={matchInfo[key] || ""}
+                    onChange={(e) => handleFieldChange(key, e.target.value)}
+                    placeholder="Escribe o selecciona el equipo rival"
+                    className={required && !matchInfo[key] ? "border-red-300" : ""}
+                  />
+                  <datalist id="teams-datalist">
                     {availableTeams.map((team: any) => (
-                      <SelectItem key={team.id} value={team.name}>
-                        {team.name}
-                      </SelectItem>
+                      <option key={team.id} value={team.name} />
                     ))}
-                  </SelectContent>
-                </Select>
+                  </datalist>
+                  <p className="text-xs text-gray-600 mt-1">
+                    💡 Puedes escribir un nombre nuevo si el rival no existe en la lista
+                  </p>
+                </>
               ) : (
                 <Input
                   type={type || "text"}
@@ -414,7 +425,7 @@ const PreviewImport = () => {
 
       {/* Inferencia de equipos para eventos sin equipo explícito */}
       {teamDetection?.events_without_team && teamDetection.events_without_team.total_count > 0 && (
-        <Card className="mb-4 border-blue-200 bg-blue-50">
+        <Card className="mb-4">
           <CardContent className="space-y-4 pt-6">
             <div className="flex items-start justify-between">
               <div>
@@ -486,13 +497,29 @@ const PreviewImport = () => {
                           </td>
                           <td className="p-3 text-gray-900 font-medium">{rule.count}</td>
                           <td className="p-3">
-                            <span className={`px-2 py-1 rounded text-xs font-medium ${
-                              rule.assign_to === 'our_team' 
-                                ? 'bg-blue-600 text-white' 
-                                : 'bg-orange-600 text-white'
-                            }`}>
-                              {rule.assign_to === 'our_team' ? '🏠 Nuestro equipo' : '🏃 Rival'}
-                            </span>
+                            <Select
+                              value={inferenceAssignments[rule.event_type] || rule.assign_to}
+                              onValueChange={(value) => setInferenceAssignments(prev => ({
+                                ...prev,
+                                [rule.event_type]: value
+                              }))}
+                            >
+                              <SelectTrigger className="w-48">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="our_team">
+                                  <span className="flex items-center gap-2">
+                                    🏠 <span>Nuestro equipo</span>
+                                  </span>
+                                </SelectItem>
+                                <SelectItem value="opponent">
+                                  <span className="flex items-center gap-2">
+                                    🏃 <span>Rival</span>
+                                  </span>
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
                           </td>
                           <td className="p-3 text-xs text-gray-700">{rule.reason}</td>
                         </tr>

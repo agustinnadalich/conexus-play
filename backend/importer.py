@@ -699,6 +699,48 @@ def import_match_from_json(json_data: dict, profile: dict):
                     ev['extra_data']['TEAM'] = team.name
         print(f"✅ Normalizados {normalized_count} eventos con team='{team.name}'")
 
+        # PASO 3: Crear o buscar el team rival si se especificó opponent_name
+        opponent_team = None
+        opponent_name = match_info.get("opponent_name")
+        if opponent_name and opponent_name.strip():
+            # Buscar si existe un team con ese nombre que sea opponent
+            opponent_team = db.query(Team).filter(
+                Team.name == opponent_name,
+                Team.is_opponent == True
+            ).first()
+            
+            if not opponent_team:
+                # Si no existe, crearlo como opponent en el mismo club
+                print(f"🆕 Creando equipo rival: {opponent_name}")
+                opponent_team = Team(
+                    name=opponent_name,
+                    club_id=club.id if club else None,
+                    category="Rival",
+                    season=str(match_info["date"][:4]),
+                    is_opponent=True
+                )
+                db.add(opponent_team)
+                db.commit()
+                print(f"✅ Equipo rival creado: {opponent_name}")
+            
+            # Normalizar eventos OPPONENT/RIVAL al nombre del equipo rival
+            opponent_normalized = 0
+            for ev in events:
+                if ev.get('team') in opponent_keywords:
+                    ev['team'] = opponent_team.name
+                    opponent_normalized += 1
+                # También en extra_data
+                if ev.get('extra_data'):
+                    if ev['extra_data'].get('team') in opponent_keywords:
+                        ev['extra_data']['team'] = opponent_team.name
+                    if ev['extra_data'].get('EQUIPO') in opponent_keywords:
+                        ev['extra_data']['EQUIPO'] = opponent_team.name
+                    if ev['extra_data'].get('TEAM') in opponent_keywords:
+                        ev['extra_data']['TEAM'] = opponent_team.name
+            
+            if opponent_normalized > 0:
+                print(f"✅ Normalizados {opponent_normalized} eventos con rival='{opponent_team.name}'")
+
         match_date = datetime.strptime(match_info["date"], "%Y-%m-%d").date()
         
         # Extraer tiempos manuales si vienen en match_info o en manual_period_times
