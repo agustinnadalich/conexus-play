@@ -219,13 +219,16 @@ def update_match(id):
                         'extra_data': e.extra_data or {}
                     } for e in events]
                     
-                    # Configurar tiempos manuales
+                    # Configurar tiempos manuales (usar valores exactos, incluso si son None o negativos)
                     match_times = {
-                        'kick_off_1': match.kick_off_1_seconds or 0,
-                        'end_1': match.end_1_seconds or 2400,
-                        'kick_off_2': match.kick_off_2_seconds or 2700,
-                        'end_2': match.end_2_seconds or 4800
+                        'kick_off_1': match.kick_off_1_seconds if match.kick_off_1_seconds is not None else 0,
+                        'end_1': match.end_1_seconds if match.end_1_seconds is not None else 2400,
+                        'kick_off_2': match.kick_off_2_seconds if match.kick_off_2_seconds is not None else 2700,
+                        'end_2': match.end_2_seconds if match.end_2_seconds is not None else 4800
                     }
+                    
+                    print(f"🔍 DEBUG: match_times para recalcular = {match_times}")
+                    print(f"🔍 DEBUG: Primer evento timestamp_sec = {events_data[0]['timestamp_sec'] if events_data else 'N/A'}")
                     
                     profile = {
                         'time_mapping': {
@@ -236,6 +239,8 @@ def update_match(id):
                     
                     # Recalcular Game_Time
                     updated_events = calculate_game_time_from_zero(events_data, match_info={}, profile=profile)
+                    
+                    print(f"🔍 DEBUG: Primer evento Game_Time después de recalcular = {updated_events[0]['extra_data'].get('Game_Time') if updated_events else 'N/A'}")
                     
                     # Actualizar eventos en la base de datos
                     for i, event in enumerate(events):

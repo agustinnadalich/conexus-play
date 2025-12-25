@@ -357,13 +357,16 @@ def import_match_from_json(json_data: dict, profile: dict):
                         'extra_data': e.extra_data or {}
                     } for e in inserted_events]
                     
-                    # Configurar tiempos manuales
+                    # Configurar tiempos manuales (usar valores exactos, incluso si son negativos)
                     match_times = {
-                        'kick_off_1': kick_off_1 or 0,
-                        'end_1': end_1 or 2400,
-                        'kick_off_2': kick_off_2 or 2700,
-                        'end_2': end_2 or 4800
+                        'kick_off_1': kick_off_1 if kick_off_1 is not None else 0,
+                        'end_1': end_1 if end_1 is not None else 2400,
+                        'kick_off_2': kick_off_2 if kick_off_2 is not None else 2700,
+                        'end_2': end_2 if end_2 is not None else 4800
                     }
+                    
+                    print(f"🔍 DEBUG Import: match_times = {match_times}")
+                    print(f"🔍 DEBUG Import: Primer evento timestamp_sec = {events_data[0]['timestamp_sec'] if events_data else 'N/A'}")
                     
                     recalc_profile = {
                         'time_mapping': {
@@ -374,6 +377,8 @@ def import_match_from_json(json_data: dict, profile: dict):
                     
                     # Recalcular Game_Time
                     updated_events = calculate_game_time_from_zero(events_data, match_info={}, profile=recalc_profile)
+                    
+                    print(f"🔍 DEBUG Import: Primer evento Game_Time recalculado = {updated_events[0]['extra_data'].get('Game_Time') if updated_events else 'N/A'}")
                     
                     # Actualizar eventos en la base de datos
                     for i, event in enumerate(inserted_events):
