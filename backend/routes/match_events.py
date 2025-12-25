@@ -111,6 +111,7 @@ def get_match_events(match_id):
                 "x": safe_serialize(event.x),
                 "y": safe_serialize(event.y),
                 "team": safe_extra_data.get("EQUIPO") if isinstance(safe_extra_data, dict) else None,  # Extraer de extra_data
+                "IS_OPPONENT": safe_extra_data.get("IS_OPPONENT") if isinstance(safe_extra_data, dict) else None,  # CRITICAL: Extraer flag de rival
                 "period": period,
                 "extra_data": safe_extra_data
             }
@@ -231,6 +232,7 @@ def get_multi_match_events():
                 "x": safe_serialize(event.x),
                 "y": safe_serialize(event.y),
                 "team": safe_extra_data.get("EQUIPO") if isinstance(safe_extra_data, dict) else None,
+                "IS_OPPONENT": safe_extra_data.get("IS_OPPONENT") if isinstance(safe_extra_data, dict) else None,  # CRITICAL: Extraer flag de rival
                 "period": period,
                 "extra_data": safe_extra_data,
             }

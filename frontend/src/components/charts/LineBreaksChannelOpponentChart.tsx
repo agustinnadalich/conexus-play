@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Doughnut } from 'react-chartjs-2';
 import { detectOurTeams, getTeamFromEvent, normalizeString } from '../../utils/teamUtils';
-import { matchesCategory } from '@/utils/eventUtils';
+import { matchesCategory, isOpponentEvent } from '@/utils/eventUtils';
 
 const LineBreaksChannelOpponentChart = ({ events, onChartClick, matchInfo }: any) => {
   const [chartData, setChartData] = useState<any>(null);
@@ -19,14 +19,9 @@ const LineBreaksChannelOpponentChart = ({ events, onChartClick, matchInfo }: any
       return getTeamFromEvent(event) || event.extra_data?.EQUIPO || event.EQUIPO || '';
     };
 
-    const detectedTeams = detectOurTeams(events || []);
-    const teamName = matchInfo?.team_name || matchInfo?.TEAM || matchInfo?.team || detectedTeams[0] || '';
-    const teamNameNorm = normalizeString(teamName).toUpperCase();
-
     const breaks = events.filter((e: any) => {
       const category = matchesCategory(e as any, 'BREAK', ['QUIEBRE']);
-      const team = normalizeString(getTeam(e)).toUpperCase();
-      return category && (teamNameNorm ? (team !== '' && team !== teamNameNorm) : team !== '');
+      return category && isOpponentEvent(e);
     });
 
     const channelCounts: any = {};

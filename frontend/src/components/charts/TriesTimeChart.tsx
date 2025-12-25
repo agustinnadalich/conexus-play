@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Bar } from 'react-chartjs-2';
+import { isOpponentEvent } from '@/utils/eventUtils';
 
 const TriesTimeChart = ({ events, onChartClick }) => {
   const [triesTimeChartData, setTriesTimeChartData] = useState(null);
@@ -71,16 +72,14 @@ const TriesTimeChart = ({ events, onChartClick }) => {
     const teamCounts = canonicalGroups.map(group => {
       return triesEvents.filter(event => {
         const g = getTimeGroupCanonical(event);
-        const team = event.team || event.TEAM || event.extra_data?.EQUIPO || event.extra_data?.TEAM;
-        return g === group && team && !/OPPONENT|RIVAL|RIVALES|AWAY|OPPONENTS/i.test(String(team));
+        return g === group && !isOpponentEvent(event);
       }).length;
     });
 
     const oppCounts = canonicalGroups.map(group => {
       return triesEvents.filter(event => {
         const g = getTimeGroupCanonical(event);
-        const team = event.team || event.TEAM || event.extra_data?.EQUIPO || event.extra_data?.TEAM;
-        return g === group && team && /OPPONENT|RIVAL|RIVALES|AWAY|OPPONENTS/i.test(String(team));
+        return g === group && isOpponentEvent(event);
       }).length;
     });
 

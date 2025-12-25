@@ -647,7 +647,7 @@ def import_match_from_json(json_data: dict, profile: dict):
             
             # Detectar equipos antes de aplicar inferencia (necesitamos los nombres detectados)
             team_detection = detect_teams_in_events(events)
-            detected_names = {t['detected_name'] for t in team_detection.get('detected_teams', [])}
+            detected_names = {t['name'] for t in team_detection.get('detected_teams', [])}
             
             applied_count = 0
             for ev in events:
@@ -664,14 +664,16 @@ def import_match_from_json(json_data: dict, profile: dict):
                                     ev['team'] = name
                                     if not ev.get('extra_data'):
                                         ev['extra_data'] = {}
+                                    ev['extra_data']['EQUIPO'] = name  # CRÍTICO: asignar a EQUIPO
                                     ev['extra_data']['_team_inferred'] = True
                                     applied_count += 1
                                     break
                         elif assignment == 'opponent':
-                            # Asignar como RIVAL
+                            # Asignar como RIVAL (será normalizado a opponent_name después)
                             ev['team'] = 'RIVAL'
                             if not ev.get('extra_data'):
                                 ev['extra_data'] = {}
+                            ev['extra_data']['EQUIPO'] = 'RIVAL'  # CRÍTICO: asignar a EQUIPO
                             ev['extra_data']['_team_inferred'] = True
                             applied_count += 1
             
@@ -726,17 +728,31 @@ def import_match_from_json(json_data: dict, profile: dict):
             # Normalizar eventos OPPONENT/RIVAL al nombre del equipo rival
             opponent_normalized = 0
             for ev in events:
+                # Marcar con flag IS_OPPONENT para que los charts lo detecten
+                is_opponent_event = False
+                
                 if ev.get('team') in opponent_keywords:
                     ev['team'] = opponent_team.name
+                    is_opponent_event = True
                     opponent_normalized += 1
                 # También en extra_data
                 if ev.get('extra_data'):
                     if ev['extra_data'].get('team') in opponent_keywords:
                         ev['extra_data']['team'] = opponent_team.name
+                        is_opponent_event = True
                     if ev['extra_data'].get('EQUIPO') in opponent_keywords:
                         ev['extra_data']['EQUIPO'] = opponent_team.name
+                        is_opponent_event = True
                     if ev['extra_data'].get('TEAM') in opponent_keywords:
                         ev['extra_data']['TEAM'] = opponent_team.name
+                        is_opponent_event = True
+                    
+                    # Marcar explícitamente como evento del rival
+                    if is_opponent_event:
+                        ev['extra_data']['IS_OPPONENT'] = True
+                    # También marcar si EQUIPO coincide con opponent_name (caso ya normalizado)
+                    elif ev['extra_data'].get('EQUIPO') == opponent_team.name:
+                        ev['extra_data']['IS_OPPONENT'] = True
             
             if opponent_normalized > 0:
                 print(f"✅ Normalizados {opponent_normalized} eventos con rival='{opponent_team.name}'")

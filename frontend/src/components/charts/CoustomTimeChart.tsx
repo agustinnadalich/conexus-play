@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Bar } from 'react-chartjs-2';
+import { isOpponentEvent } from '@/utils/eventUtils';
 
 const CoustomTimeChart = ({ events, onChartClick }) => {
   const [coustomTimeChartData, setTacklesTimeChartData] = useState(null);
@@ -36,7 +37,7 @@ const CoustomTimeChart = ({ events, onChartClick }) => {
         {
           label: `Events by game time - ${selectedCategory}`,
           data: timeGroups.map(group => {
-            const groupEvents = coustomEvents.filter(event => event.Time_Group === group && event.TEAM !== "OPPONENT");
+            const groupEvents = coustomEvents.filter(event => event.Time_Group === group && !isOpponentEvent(event));
             const totalEvents = groupEvents.length;
             return totalEvents;
           }),
@@ -45,7 +46,7 @@ const CoustomTimeChart = ({ events, onChartClick }) => {
         {
           label: `Events by game time (Opponent) - ${selectedCategory}`,
           data: timeGroups.map(group => {
-            const groupEvents = coustomEvents.filter(event => event.Time_Group === group && event.TEAM === "OPPONENT");
+            const groupEvents = coustomEvents.filter(event => event.Time_Group === group && isOpponentEvent(event));
             const totalEvents = groupEvents.length;
             return totalEvents;
           }),

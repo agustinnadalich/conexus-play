@@ -1,4 +1,6 @@
 // Utilities to normalize and extract team information from events
+import { isOpponentEvent } from './eventUtils';
+
 export function getTeamFromEvent(ev: any): string | undefined {
   if (!ev) return undefined;
   const tryFields = [
@@ -95,15 +97,11 @@ export function computeTackleStatsAggregated(events: any[], ourTeamsList: string
     (event.CATEGORY && event.CATEGORY === 'TACKLE')
   );
 
-  // Stats agregados de todos nuestros equipos
-  const ourEventsAggregated = tackleEvents.filter(ev => 
-    isOurTeam(getTeamFromEvent(ev) || '', ourTeamsList)
-  );
+  // Stats agregados de todos nuestros equipos - usar IS_OPPONENT flag
+  const ourEventsAggregated = tackleEvents.filter(ev => !isOpponentEvent(ev));
   
-  // Stats agregados de todos los rivales
-  const opponentEventsAggregated = tackleEvents.filter(ev => 
-    !isOurTeam(getTeamFromEvent(ev) || '', ourTeamsList)
-  );
+  // Stats agregados de todos los rivales - usar IS_OPPONENT flag
+  const opponentEventsAggregated = tackleEvents.filter(ev => isOpponentEvent(ev));
   
   const ourStats = computeStatsFromEvents(ourEventsAggregated);
   const oppStats = computeStatsFromEvents(opponentEventsAggregated);

@@ -10,7 +10,7 @@ import {
   BarElement,
 } from "chart.js";
 import { MatchEvent } from "@/types";
-import { pickValue } from "@/utils/eventUtils";
+import { pickValue, isOpponentEvent } from "@/utils/eventUtils";
 import { getTeamFromEvent, normalizeTeamForFilter } from "@/utils/teamUtils";
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
@@ -76,8 +76,7 @@ const LineoutDetailCharts: React.FC<Props> = ({ events, matchInfo, ourTeamsList 
       const jumperName = cleanPlayer(pickValue(event, ["JUGADOR", "PLAYER", "players"]));
       const playName = String(pickValue(event, ["JUGADA", "PLAY", "CHIAMATA", "MOVE"]) || "").trim() || "Sin dato";
 
-      const teamRaw = getTeamFromEvent(event) ?? pickValue(event, ["TEAM"]);
-      const team = normalizeTeamForFilter(teamRaw || "", matchInfo, ourTeamsList);
+      const team = isOpponentEvent(event) ? "Rival" : "Nuestro Equipo";
 
       if (!matrix[team]) matrix[team] = {};
       matrix[team][result] = (matrix[team][result] || 0) + 1;
@@ -185,9 +184,7 @@ const LineoutDetailCharts: React.FC<Props> = ({ events, matchInfo, ourTeamsList 
   ) =>
     Object.keys(entitiesByTeam)
       .map((team) => {
-        const isOur = ourTeamsList?.length
-          ? ourTeamsList.some((t) => t && team.toLowerCase().trim() === t.toLowerCase().trim())
-          : true;
+        const isOur = team === "Nuestro Equipo";
         if (onlyOurTeam && !isOur) return null;
         const entries = Object.entries(entitiesByTeam[team] || {}).filter(([name, v]) => {
           if (skipUnknownLabel && (!name || name.toLowerCase().includes("sin dato"))) return false;
@@ -234,7 +231,7 @@ const LineoutDetailCharts: React.FC<Props> = ({ events, matchInfo, ourTeamsList 
             }`}
           >
             {perTeamResultDonuts.map(({ team, eff, data }) => {
-              const isOur = ourTeamsList?.some((t) => t && team.toLowerCase().trim() === t.toLowerCase().trim());
+              const isOur = team === "Nuestro Equipo";
               const label = isOur ? "Nuestro" : "Rival";
               const teamSide = isOur ? 'OUR_TEAM' : 'OPPONENT';
               return (
@@ -292,7 +289,7 @@ const LineoutDetailCharts: React.FC<Props> = ({ events, matchInfo, ourTeamsList 
                   const posRaw = chart.data.labels[index];
                   const pos = String(posRaw || '').split(' ')[0].replace(/[()%]/g, '');
                   const res = chart.data.datasets[datasetIndex].label;
-                  const isOur = ourTeamsList?.some((t) => t && team.toLowerCase().trim() === t.toLowerCase().trim());
+                  const isOur = team === "Nuestro Equipo";
                   onChartClick(event, elements, chart, "LINE_POSITION", "lineouts-detail", [
                     { descriptor: "TEAM_SIDE", value: isOur ? "OUR_TEAM" : "OPPONENT" },
                     { descriptor: "LINE_POSITION", value: pos },
@@ -321,7 +318,7 @@ const LineoutDetailCharts: React.FC<Props> = ({ events, matchInfo, ourTeamsList 
                   const rawLabel = chart.data.labels[index];
                   const name = String(rawLabel || '').replace(/\(.*?\)/g, '').trim();
                   const res = chart.data.datasets[datasetIndex].label;
-                  const isOur = ourTeamsList?.some((t) => t && team.toLowerCase().trim() === t.toLowerCase().trim());
+                  const isOur = team === "Nuestro Equipo";
                   onChartClick(event, elements, chart, "LINE_RESULT", "lineouts-detail", [
                     { descriptor: "TEAM_SIDE", value: isOur ? "OUR_TEAM" : "OPPONENT" },
                     { descriptor, value: name },
@@ -350,7 +347,7 @@ const LineoutDetailCharts: React.FC<Props> = ({ events, matchInfo, ourTeamsList 
                   const rawLabel = chart.data.labels[index];
                   const name = String(rawLabel || '').replace(/\(.*?\)/g, '').trim().replace(/^T[- ]/i, '');
                   const res = chart.data.datasets[datasetIndex].label;
-                  const isOur = ourTeamsList?.some((t) => t && team.toLowerCase().trim() === t.toLowerCase().trim());
+                  const isOur = team === "Nuestro Equipo";
                   onChartClick(event, elements, chart, "LINE_RESULT", "lineouts-detail", [
                     { descriptor: "TEAM_SIDE", value: isOur ? "OUR_TEAM" : "OPPONENT" },
                     { descriptor, value: name },
@@ -379,7 +376,7 @@ const LineoutDetailCharts: React.FC<Props> = ({ events, matchInfo, ourTeamsList 
                   const rawLabel = chart.data.labels[index];
                   const name = String(rawLabel || '').replace(/\(.*?\)/g, '').trim();
                   const res = chart.data.datasets[datasetIndex].label;
-                  const isOur = ourTeamsList?.some((t) => t && team.toLowerCase().trim() === t.toLowerCase().trim());
+                  const isOur = team === "Nuestro Equipo";
                   onChartClick(event, elements, chart, "LINE_RESULT", "lineouts-detail", [
                     { descriptor: "TEAM_SIDE", value: isOur ? "OUR_TEAM" : "OPPONENT" },
                     { descriptor, value: name },

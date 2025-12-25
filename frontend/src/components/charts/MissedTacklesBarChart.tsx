@@ -9,6 +9,7 @@ import {
   Legend,
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
+import { isOpponentEvent } from '@/utils/eventUtils';
 
 // Register Chart.js components
 ChartJS.register(
@@ -78,7 +79,7 @@ const MissedTacklesBarChart = ({ events, onChartClick }) => {
               } else if (event.extra_data?.JUGADOR) {
                 eventPlayer = event.extra_data.JUGADOR;
               }
-              return eventPlayer === player && event.TEAM !== "OPPONENT";
+              return eventPlayer === player && !isOpponentEvent(event);
             }).length;
             return count;
           }),

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Bar } from 'react-chartjs-2';
+import { isOpponentEvent } from '@/utils/eventUtils';
 
 const TriesOriginChart = ({ events, onChartClick }) => {
   const [triesOriginChartData, setTriesOriginChartData] = useState(null);
@@ -104,7 +105,7 @@ const TriesOriginChart = ({ events, onChartClick }) => {
       console.log(`Try #${idx}: originRaw=${rawOrigin}, normalized=${origin}, team=${team}, phases=${phases}, sector=${fieldSector}`);
 
       if (origin && originCategories.includes(origin)) {
-        if (team === 'OPPONENT' || team === 'RIVAL') {
+        if (isOpponentEvent(tryEvent)) {
           opponentCounts[origin] = (opponentCounts[origin] || 0) + 1;
           if (!isNaN(phases)) { oppPhasesSum[origin] += phases; oppPhasesCount[origin] += 1; }
         } else {
@@ -112,7 +113,7 @@ const TriesOriginChart = ({ events, onChartClick }) => {
           if (!isNaN(phases)) { teamPhasesSum[origin] += phases; teamPhasesCount[origin] += 1; }
         }
         // Log del conteo para verificar
-        console.log(`Contando try: team=${team}, origin=${origin}, sector=${fieldSector}, phases=${phases}`);
+        console.log(`Contando try: team=${team}, origin=${origin}, sector=${fieldSector}, phases=${phases}, isOpponent=${isOpponentEvent(tryEvent)}`);
       }
     });
 

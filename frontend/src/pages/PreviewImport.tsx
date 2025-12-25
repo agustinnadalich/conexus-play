@@ -315,9 +315,9 @@ const PreviewImport = () => {
       {profile && (
         <Card className="mb-4">
           <CardContent className="space-y-2 pt-6">
-            <h2 className="text-lg font-semibold text-gray-900">Perfil de Importación</h2>
-            <p className="text-gray-900"><strong>Nombre:</strong> {profile.name}</p>
-            <p className="text-gray-900"><strong>Descripción:</strong> {profile.description}</p>
+            <h2 className="text-lg font-semibold text-slate-200">Perfil de Importación</h2>
+            <p className="text-slate-300"><strong>Nombre:</strong> {profile.name}</p>
+            <p className="text-slate-300"><strong>Descripción:</strong> {profile.description}</p>
             <div className={`inline-flex items-center px-2 py-1 rounded text-sm ${
               isManualProfile ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'
             }`}>
@@ -329,10 +329,10 @@ const PreviewImport = () => {
 
       <Card className="mb-4">
         <CardContent className="space-y-4 pt-6">
-          <h2 className="text-lg font-semibold text-gray-900">Metadata del Partido</h2>
+          <h2 className="text-lg font-semibold text-slate-200">Metadata del Partido</h2>
           {matchFields.map(({ key, label, required, type }) => (
             <div key={key} className="flex flex-col">
-              <Label className="text-gray-700">
+              <Label className="text-slate-300">
                 {label}
                 {required && <span className="text-red-500 ml-1">*</span>}
               </Label>
@@ -351,7 +351,7 @@ const PreviewImport = () => {
                       <option key={team.id} value={team.name} />
                     ))}
                   </datalist>
-                  <p className="text-xs text-gray-600 mt-1">
+                  <p className="text-xs text-slate-400 mt-1">
                     💡 Puedes escribir un nombre nuevo si el rival no existe en la lista
                   </p>
                 </>
@@ -429,28 +429,28 @@ const PreviewImport = () => {
           <CardContent className="space-y-4 pt-6">
             <div className="flex items-start justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">🧠 Asignación Inteligente de Equipos</h2>
-                <p className="text-sm text-gray-700 mt-1">
+                <h2 className="text-lg font-semibold text-slate-200">🧠 Asignación Inteligente de Equipos</h2>
+                <p className="text-sm text-slate-300 mt-1">
                   {teamDetection.events_without_team.total_count} eventos no tienen equipo explícito. 
                   Selecciona las categorías que quieres asignar automáticamente.
                 </p>
               </div>
-              <div className="text-sm bg-blue-100 text-blue-900 px-3 py-1 rounded font-medium">
+              <div className="text-sm bg-blue-600 text-white px-3 py-1 rounded font-medium">
                 <span className="font-bold">{teamDetection.total_events_with_team}</span> eventos con equipo
               </div>
             </div>
 
             {/* Mostrar equipos detectados */}
             {teamDetection.detected_teams && teamDetection.detected_teams.length > 0 && (
-              <div className="p-3 bg-white rounded border border-blue-200">
-                <p className="text-sm font-medium mb-2 text-gray-900">Equipos detectados:</p>
+              <div className="p-3 bg-slate-800 rounded border border-slate-700">
+                <p className="text-sm font-medium mb-2 text-slate-200">Equipos detectados:</p>
                 <div className="flex gap-4">
                   {teamDetection.detected_teams.map((team) => (
                     <div key={team.name} className="flex items-center gap-2">
-                      <span className="font-mono text-sm bg-gray-100 text-gray-900 px-3 py-1 rounded border border-gray-300 font-medium">
+                      <span className="font-mono text-sm bg-slate-700 text-slate-100 px-3 py-1 rounded border border-slate-600 font-medium">
                         {team.name}
                       </span>
-                      <span className="text-xs text-gray-700">
+                      <span className="text-xs text-slate-300">
                         {team.count} eventos
                         {team.is_likely_opponent && ' 🏃 (rival)'}
                       </span>
@@ -462,15 +462,15 @@ const PreviewImport = () => {
 
             {/* Tabla de reglas de inferencia */}
             {teamDetection.events_without_team.inference_rules.length > 0 && (
-              <div className="border border-gray-300 rounded overflow-hidden bg-white">
+              <div className="border border-slate-700 rounded overflow-hidden bg-slate-800">
                 <table className="w-full text-sm">
-                  <thead className="bg-gray-100">
+                  <thead className="bg-slate-900">
                     <tr>
-                      <th className="text-left p-3 font-medium text-gray-900">Activar</th>
-                      <th className="text-left p-3 font-medium text-gray-900">Categoría</th>
-                      <th className="text-left p-3 font-medium text-gray-900">Eventos</th>
-                      <th className="text-left p-3 font-medium text-gray-900">Asignar a</th>
-                      <th className="text-left p-3 font-medium text-gray-900">Razón</th>
+                      <th className="text-left p-3 font-medium text-slate-200">Activar</th>
+                      <th className="text-left p-3 font-medium text-slate-200">Categoría</th>
+                      <th className="text-left p-3 font-medium text-slate-200">Eventos</th>
+                      <th className="text-left p-3 font-medium text-slate-200">Asignar a</th>
+                      <th className="text-left p-3 font-medium text-slate-200">Razón</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -479,7 +479,7 @@ const PreviewImport = () => {
                       return (
                         <tr 
                           key={rule.event_type} 
-                          className={`border-t ${isSelected ? 'bg-green-50' : 'bg-white'}`}
+                          className={`border-t border-slate-700 ${isSelected ? 'bg-slate-700' : 'bg-slate-800'}`}
                         >
                           <td className="p-3">
                             <input
@@ -493,9 +493,9 @@ const PreviewImport = () => {
                             />
                           </td>
                           <td className="p-3">
-                            <span className="font-mono font-medium text-gray-900">{rule.event_type}</span>
+                            <span className="font-mono font-medium text-slate-200">{rule.event_type}</span>
                           </td>
-                          <td className="p-3 text-gray-900 font-medium">{rule.count}</td>
+                          <td className="p-3 text-slate-200 font-medium">{rule.count}</td>
                           <td className="p-3">
                             <Select
                               value={inferenceAssignments[rule.event_type] || rule.assign_to}
@@ -521,7 +521,7 @@ const PreviewImport = () => {
                               </SelectContent>
                             </Select>
                           </td>
-                          <td className="p-3 text-xs text-gray-700">{rule.reason}</td>
+                          <td className="p-3 text-xs text-slate-300">{rule.reason}</td>
                         </tr>
                       );
                     })}
@@ -541,7 +541,7 @@ const PreviewImport = () => {
                   });
                   setSelectedInferenceRules(allSelected);
                 }}
-                className="border-gray-300 text-gray-900 hover:bg-gray-100"
+                className="border-slate-600 text-slate-200 hover:bg-slate-700"
               >
                 ✓ Seleccionar Todas
               </Button>
@@ -549,11 +549,11 @@ const PreviewImport = () => {
                 variant="outline" 
                 size="sm"
                 onClick={() => setSelectedInferenceRules({})}
-                className="border-gray-300 text-gray-900 hover:bg-gray-100"
+                className="border-slate-600 text-slate-200 hover:bg-slate-700"
               >
                 ✗ Desactivar Todas
               </Button>
-              <div className="ml-auto text-sm text-gray-900 font-medium bg-white px-3 py-1 rounded border border-gray-300">
+              <div className="ml-auto text-sm text-slate-200 font-medium bg-slate-700 px-3 py-1 rounded border border-slate-600">
                 {Object.values(selectedInferenceRules).filter(Boolean).length} de {teamDetection.events_without_team.inference_rules.length} reglas activas
               </div>
             </div>
@@ -563,8 +563,8 @@ const PreviewImport = () => {
 
       <Card className="mb-4">
         <CardContent className="space-y-4 pt-6">
-          <h2 className="text-lg font-semibold text-gray-900">Categorías Detectadas</h2>
-          <p className="text-sm text-gray-700">
+          <h2 className="text-lg font-semibold text-slate-200">Categorías Detectadas</h2>
+          <p className="text-sm text-slate-300">
             Eventos detectados: {events.length} | Categorías descartadas: {discardedCategories.length} | Eventos que se importarán: {events.filter((ev: any) => !discardedCategories.includes(ev.event_type)).length}
           </p>
           
@@ -590,7 +590,7 @@ const PreviewImport = () => {
                 <label 
                   key={cat} 
                   className={`inline-flex items-center gap-2 p-2 border rounded cursor-pointer transition-colors ${
-                    isDiscarded ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'
+                    isDiscarded ? 'bg-red-900/30 border-red-700' : 'bg-slate-700 border-slate-600'
                   }`}
                 >
                   <input
@@ -599,8 +599,8 @@ const PreviewImport = () => {
                     onChange={() => toggleCategory(cat)}
                   />
                   <div className="flex flex-col">
-                    <span className="font-medium text-gray-900">{cat}</span>
-                    <span className="text-xs text-gray-500">{eventCount} eventos</span>
+                    <span className="font-medium text-slate-200">{cat}</span>
+                    <span className="text-xs text-slate-400">{eventCount} eventos</span>
                   </div>
                 </label>
               );

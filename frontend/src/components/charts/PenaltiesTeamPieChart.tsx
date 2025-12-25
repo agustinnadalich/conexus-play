@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Doughnut } from 'react-chartjs-2';
-import { matchesCategory } from '@/utils/eventUtils';
-
-const normalizeTeam = (val: any) => String(val || '').toUpperCase().trim();
+import { matchesCategory, isOpponentEvent } from '@/utils/eventUtils';
 
 interface Props {
   events: any[];
@@ -10,7 +8,7 @@ interface Props {
   title?: string;
   tabId?: string;
   onChartClick: (...args: any[]) => void;
-  ourTeamsList?: string[];
+  ourTeamsList?: string[]; // Mantenemos para compatibilidad pero no se usa
 }
 
 const PenaltiesTeamPieChart: React.FC<Props> = ({
@@ -24,30 +22,27 @@ const PenaltiesTeamPieChart: React.FC<Props> = ({
   const [chartData, setChartData] = useState<any>(null);
   const [totals, setTotals] = useState({ our: 0, opp: 0 });
 
-  const ownerOf = (ev: any) => {
-    const teamCandidates = [
-      ev.team,
-      ev.TEAM,
-      ev.EQUIPO,
-      ev.extra_data?.TEAM,
-      ev.extra_data?.EQUIPO,
-      ev.match_team,
-      ev.matchTeam,
-    ].filter(Boolean);
-    const team = teamCandidates.length ? normalizeTeam(teamCandidates[0]) : '';
-    const matchOpp = ev.match_opponent ? normalizeTeam(ev.match_opponent) : '';
-    const normalizedOur = ourTeamsList.map(normalizeTeam).filter(Boolean);
-
-    if (team && normalizedOur.includes(team)) return 'our';
-    if (team && matchOpp && team === matchOpp) return 'opp';
-    if (team && /\b(OPP|OPPONENT|RIVAL|VISITA|AWAY)\b/.test(team)) return 'opp';
-    return 'our';
-  };
-
   useEffect(() => {
     const filtered = events.filter((ev) => matchesCategory(ev, category));
-    const ourCount = filtered.filter((ev) => ownerOf(ev) === 'our').length;
-    const oppCount = filtered.filter((ev) => ownerOf(ev) === 'opp').length;
+    const ourCount = filtered.filter((ev) => !isOpponentEvent(ev)).length;
+    const oppCount = filtered.filter((ev) => isOpponentEvent(ev)).length;
+    
+    // Debug log para multimatch
+    if (filtered.length > 0) {
+      console.log('PenaltiesTeamPieChart:', { 
+        category, 
+        total: filtered.length, 
+        our: ourCount, 
+        opp: oppCount,
+        sample: filtered.slice(0, 3).map(e => ({
+          IS_OPPONENT: e.IS_OPPONENT,
+          extra_IS_OPPONENT: e.extra_data?.IS_OPPONENT,
+          team: e.team || e.TEAM,
+          match_id: e.match_id
+        }))
+      });
+    }
+    
     if (ourCount + oppCount === 0) {
       setChartData(null);
       return;

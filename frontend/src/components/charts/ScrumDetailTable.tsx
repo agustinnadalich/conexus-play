@@ -1,6 +1,6 @@
 import React from "react";
 import { MatchEvent } from "@/types";
-import { pickValue } from "@/utils/eventUtils";
+import { pickValue, isOpponentEvent } from "@/utils/eventUtils";
 import { getTeamFromEvent, normalizeTeamForFilter } from "@/utils/teamUtils";
 
 type ScrumDetailTableProps = {
@@ -114,10 +114,9 @@ const ScrumDetailTable: React.FC<ScrumDetailTableProps> = ({
   }
 
   const rows = events.map((event, idx) => {
-    const teamRaw = getTeamFromEvent(event) ?? pickValue(event, ["TEAM"]);
     return {
       key: event.id ?? event.ID ?? idx,
-      team: normalizeTeamForFilter(teamRaw || "", matchInfo, ourTeamsList),
+      team: isOpponentEvent(event) ? "Rival" : "Nuestro Equipo",
       time: formatClock(event),
       sector: formatSector(event),
       result: formatResult(

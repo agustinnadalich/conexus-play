@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Bar } from 'react-chartjs-2';
+import { isOpponentEvent } from '@/utils/eventUtils';
 
 const TriesPlayerChart = ({ events, onChartClick }: any) => {
   const [triesPlayerChartData, setTriesPlayerChartData] = useState(null);
@@ -61,8 +62,7 @@ const TriesPlayerChart = ({ events, onChartClick }: any) => {
       const totalTries = triesEvents
         .filter((event) => {
           const playerName = getPlayerName(event);
-          const team = event.team || event.TEAM || event.extra_data?.EQUIPO;
-          return playerName === player && team !== "OPPONENT" && team !== "RIVAL";
+          return playerName === player && !isOpponentEvent(event);
         })
         .length;
       return totalTries;

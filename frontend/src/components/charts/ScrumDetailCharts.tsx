@@ -10,7 +10,7 @@ import {
   BarElement,
 } from "chart.js";
 import { MatchEvent } from "@/types";
-import { pickValue } from "@/utils/eventUtils";
+import { pickValue, isOpponentEvent } from "@/utils/eventUtils";
 import { getTeamFromEvent, normalizeTeamForFilter } from "@/utils/teamUtils";
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
@@ -64,8 +64,7 @@ const ScrumDetailCharts: React.FC<Props> = ({ events, matchInfo, ourTeamsList = 
         pickValue(event, ["SCRUM_RESULT", "SCRUM", "RESULTADO", "RESULTADO-SCRUM", "RESULT"])
       );
       const advance = normalizeAdvance(pickValue(event, ["ADVANCE", "AVANCE"]));
-      const teamRaw = getTeamFromEvent(event) ?? pickValue(event, ["TEAM"]);
-      const team = normalizeTeamForFilter(teamRaw || "", matchInfo, ourTeamsList);
+      const team = isOpponentEvent(event) ? "Rival" : "Nuestro Equipo";
       teamsSet.add(team);
       advSet.add(advance);
       resSet.add(result);
@@ -165,7 +164,7 @@ const ScrumDetailCharts: React.FC<Props> = ({ events, matchInfo, ourTeamsList = 
         data: timeLabels.map((tg) => {
           const teamsInTime = timeTeamBuckets[tg] || {};
           const totalBySide = Object.entries(teamsInTime).reduce((acc, [team, resMap]) => {
-            const isOur = ourTeamsList?.some((t) => t && team.toLowerCase().trim() === t.toLowerCase().trim());
+            const isOur = team === "Nuestro Equipo";
             if ((side === "OUR" && isOur) || (side === "OPP" && !isOur)) {
               acc += resMap[res] || 0;
             }
@@ -217,13 +216,13 @@ const ScrumDetailCharts: React.FC<Props> = ({ events, matchInfo, ourTeamsList = 
         >
           {perTeamAdvancePie
             .sort((a, b) => {
-              const aIsOur = ourTeamsList?.some((t) => t && a.team.toLowerCase().trim() === t.toLowerCase().trim());
-              const bIsOur = ourTeamsList?.some((t) => t && b.team.toLowerCase().trim() === t.toLowerCase().trim());
+              const aIsOur = a.team === "Nuestro Equipo";
+              const bIsOur = b.team === "Nuestro Equipo";
               if (aIsOur === bIsOur) return 0;
               return aIsOur ? -1 : 1;
             })
             .map(({ team, data }) => {
-              const isOur = ourTeamsList?.some((t) => t && team.toLowerCase().trim() === t.toLowerCase().trim());
+              const isOur = team === "Nuestro Equipo";
               const label = isOur ? "Nuestro" : "Rival";
               return (
                 <div key={`pie-${team}`} className="h-full w-full flex flex-col items-center">
