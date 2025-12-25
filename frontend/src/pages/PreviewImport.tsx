@@ -1,10 +1,11 @@
-import React, { ChangeEvent, useState } from "react";
+import React, { ChangeEvent, useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner"; // Asumiendo que sonner está instalado
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { authFetch } from "@/api/api";
 
 // Tipos para team inference system
@@ -68,6 +69,25 @@ const PreviewImport = () => {
     });
     return initial;
   });
+  
+  // Estado para equipos disponibles
+  const [availableTeams, setAvailableTeams] = useState<any[]>([]);
+  
+  // Cargar equipos disponibles
+  useEffect(() => {
+    const loadTeams = async () => {
+      try {
+        const res = await authFetch("/teams");
+        if (res.ok) {
+          const data = await res.json();
+          setAvailableTeams(data.teams || []);
+        }
+      } catch {
+        // ignore
+      }
+    };
+    loadTeams();
+  }, []);
   
   // Estados para configuración de tiempos manuales
   const [manualTimes, setManualTimes] = useState<Record<string, number>>(() => {
@@ -286,9 +306,9 @@ const PreviewImport = () => {
       {profile && (
         <Card className="mb-4">
           <CardContent className="space-y-2 pt-6">
-            <h2 className="text-lg font-semibold">Perfil de Importación</h2>
-            <p><strong>Nombre:</strong> {profile.name}</p>
-            <p><strong>Descripción:</strong> {profile.description}</p>
+            <h2 className="text-lg font-semibold text-gray-900">Perfil de Importación</h2>
+            <p className="text-gray-900"><strong>Nombre:</strong> {profile.name}</p>
+            <p className="text-gray-900"><strong>Descripción:</strong> {profile.description}</p>
             <div className={`inline-flex items-center px-2 py-1 rounded text-sm ${
               isManualProfile ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'
             }`}>
@@ -300,20 +320,39 @@ const PreviewImport = () => {
 
       <Card className="mb-4">
         <CardContent className="space-y-4 pt-6">
-          <h2 className="text-lg font-semibold">Metadata del Partido</h2>
+          <h2 className="text-lg font-semibold text-gray-900">Metadata del Partido</h2>
           {matchFields.map(({ key, label, required, type }) => (
             <div key={key} className="flex flex-col">
-              <Label>
+              <Label className="text-gray-700">
                 {label}
                 {required && <span className="text-red-500 ml-1">*</span>}
               </Label>
-              <Input
-                type={type || "text"}
-                value={matchInfo[key] || ""}
-                onChange={(e) => handleFieldChange(key, e.target.value)}
-                placeholder={`Ingresa ${label.toLowerCase()}`}
-                className={required && !matchInfo[key] ? "border-red-300" : ""}
-              />
+              {key === 'opponent_name' ? (
+                <Select
+                  value={matchInfo[key] || ""}
+                  onValueChange={(value) => handleFieldChange(key, value)}
+                >
+                  <SelectTrigger className={required && !matchInfo[key] ? "border-red-300" : ""}>
+                    <SelectValue placeholder="Selecciona el equipo rival" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="manual-input">Ingresar manualmente...</SelectItem>
+                    {availableTeams.map((team: any) => (
+                      <SelectItem key={team.id} value={team.name}>
+                        {team.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  type={type || "text"}
+                  value={matchInfo[key] || ""}
+                  onChange={(e) => handleFieldChange(key, e.target.value)}
+                  placeholder={`Ingresa ${label.toLowerCase()}`}
+                  className={required && !matchInfo[key] ? "border-red-300" : ""}
+                />
+              )}
             </div>
           ))}
         </CardContent>
@@ -375,34 +414,34 @@ const PreviewImport = () => {
 
       {/* Inferencia de equipos para eventos sin equipo explícito */}
       {teamDetection?.events_without_team && teamDetection.events_without_team.total_count > 0 && (
-        <Card className="mb-4">
+        <Card className="mb-4 border-blue-200 bg-blue-50">
           <CardContent className="space-y-4 pt-6">
             <div className="flex items-start justify-between">
               <div>
-                <h2 className="text-lg font-semibold">🧠 Asignación Inteligente de Equipos</h2>
-                <p className="text-sm text-muted-foreground mt-1">
+                <h2 className="text-lg font-semibold text-gray-900">🧠 Asignación Inteligente de Equipos</h2>
+                <p className="text-sm text-gray-700 mt-1">
                   {teamDetection.events_without_team.total_count} eventos no tienen equipo explícito. 
                   Selecciona las categorías que quieres asignar automáticamente.
                 </p>
               </div>
-              <div className="text-sm bg-blue-50 px-3 py-1 rounded">
-                <span className="font-medium">{teamDetection.total_events_with_team}</span> eventos con equipo
+              <div className="text-sm bg-blue-100 text-blue-900 px-3 py-1 rounded font-medium">
+                <span className="font-bold">{teamDetection.total_events_with_team}</span> eventos con equipo
               </div>
             </div>
 
             {/* Mostrar equipos detectados */}
             {teamDetection.detected_teams && teamDetection.detected_teams.length > 0 && (
-              <div className="p-3 bg-gray-50 rounded">
-                <p className="text-sm font-medium mb-2">Equipos detectados:</p>
+              <div className="p-3 bg-white rounded border border-blue-200">
+                <p className="text-sm font-medium mb-2 text-gray-900">Equipos detectados:</p>
                 <div className="flex gap-4">
                   {teamDetection.detected_teams.map((team) => (
                     <div key={team.name} className="flex items-center gap-2">
-                      <span className="font-mono text-sm bg-white px-2 py-1 rounded border">
+                      <span className="font-mono text-sm bg-gray-100 text-gray-900 px-3 py-1 rounded border border-gray-300 font-medium">
                         {team.name}
                       </span>
-                      <span className="text-xs text-gray-600">
+                      <span className="text-xs text-gray-700">
                         {team.count} eventos
-                        {team.is_likely_opponent && ' (rival)'}
+                        {team.is_likely_opponent && ' 🏃 (rival)'}
                       </span>
                     </div>
                   ))}
@@ -412,15 +451,15 @@ const PreviewImport = () => {
 
             {/* Tabla de reglas de inferencia */}
             {teamDetection.events_without_team.inference_rules.length > 0 && (
-              <div className="border rounded overflow-hidden">
+              <div className="border border-gray-300 rounded overflow-hidden bg-white">
                 <table className="w-full text-sm">
-                  <thead className="bg-gray-50">
+                  <thead className="bg-gray-100">
                     <tr>
-                      <th className="text-left p-3 font-medium">Activar</th>
-                      <th className="text-left p-3 font-medium">Categoría</th>
-                      <th className="text-left p-3 font-medium">Eventos</th>
-                      <th className="text-left p-3 font-medium">Asignar a</th>
-                      <th className="text-left p-3 font-medium">Razón</th>
+                      <th className="text-left p-3 font-medium text-gray-900">Activar</th>
+                      <th className="text-left p-3 font-medium text-gray-900">Categoría</th>
+                      <th className="text-left p-3 font-medium text-gray-900">Eventos</th>
+                      <th className="text-left p-3 font-medium text-gray-900">Asignar a</th>
+                      <th className="text-left p-3 font-medium text-gray-900">Razón</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -443,19 +482,19 @@ const PreviewImport = () => {
                             />
                           </td>
                           <td className="p-3">
-                            <span className="font-mono font-medium">{rule.event_type}</span>
+                            <span className="font-mono font-medium text-gray-900">{rule.event_type}</span>
                           </td>
-                          <td className="p-3 text-gray-600">{rule.count}</td>
+                          <td className="p-3 text-gray-900 font-medium">{rule.count}</td>
                           <td className="p-3">
                             <span className={`px-2 py-1 rounded text-xs font-medium ${
                               rule.assign_to === 'our_team' 
-                                ? 'bg-blue-100 text-blue-800' 
-                                : 'bg-orange-100 text-orange-800'
+                                ? 'bg-blue-600 text-white' 
+                                : 'bg-orange-600 text-white'
                             }`}>
                               {rule.assign_to === 'our_team' ? '🏠 Nuestro equipo' : '🏃 Rival'}
                             </span>
                           </td>
-                          <td className="p-3 text-xs text-gray-600">{rule.reason}</td>
+                          <td className="p-3 text-xs text-gray-700">{rule.reason}</td>
                         </tr>
                       );
                     })}
@@ -475,17 +514,19 @@ const PreviewImport = () => {
                   });
                   setSelectedInferenceRules(allSelected);
                 }}
+                className="border-gray-300 text-gray-900 hover:bg-gray-100"
               >
-                Seleccionar Todas
+                ✓ Seleccionar Todas
               </Button>
               <Button 
                 variant="outline" 
                 size="sm"
                 onClick={() => setSelectedInferenceRules({})}
+                className="border-gray-300 text-gray-900 hover:bg-gray-100"
               >
-                Desactivar Todas
+                ✗ Desactivar Todas
               </Button>
-              <div className="ml-auto text-sm text-gray-600">
+              <div className="ml-auto text-sm text-gray-900 font-medium bg-white px-3 py-1 rounded border border-gray-300">
                 {Object.values(selectedInferenceRules).filter(Boolean).length} de {teamDetection.events_without_team.inference_rules.length} reglas activas
               </div>
             </div>
@@ -495,8 +536,8 @@ const PreviewImport = () => {
 
       <Card className="mb-4">
         <CardContent className="space-y-4 pt-6">
-          <h2 className="text-lg font-semibold">Categorías Detectadas</h2>
-          <p className="text-sm text-muted-foreground">
+          <h2 className="text-lg font-semibold text-gray-900">Categorías Detectadas</h2>
+          <p className="text-sm text-gray-700">
             Eventos detectados: {events.length} | Categorías descartadas: {discardedCategories.length} | Eventos que se importarán: {events.filter((ev: any) => !discardedCategories.includes(ev.event_type)).length}
           </p>
           
